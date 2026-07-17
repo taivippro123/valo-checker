@@ -38,7 +38,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
     setStorefront(null);
 
     try {
-      const res = await axios.post(`${API_URL}/api/store/check`, { redirectUrl });
+      const res = await axios.post(`${API_URL}/store/check`, { redirectUrl });
       setStorefront(res.data.storefront || null);
       setRiotId(res.data.riotId || '');
       setShard(res.data.shard || '');
