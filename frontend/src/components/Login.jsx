@@ -43,7 +43,8 @@ const Login = ({ onLoginSuccess, API_URL }) => {
       });
 
       if (response.data && response.data.token) {
-        onLoginSuccess(response.data.token, response.data.username);
+        const isAdmin = username.trim().toLowerCase() === 'admin';
+        onLoginSuccess(response.data.token, response.data.username, isAdmin);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Authentication failed. Please try again.');

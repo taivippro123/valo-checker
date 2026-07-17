@@ -3,11 +3,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.js';
-import accountRoutes from './routes/accounts.js';
 import skinRoutes from './routes/skins.js';
+import storeRoutes from './routes/store.js';
+import logsRoutes from './routes/logs.js';
+import adminRoutes from './routes/admin.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './config/swagger.js';
-import { initCronScheduler } from './jobs/storeCron.js';
 import { loadSkinsCache } from './services/storeService.js';
 
 // Load environment variables
@@ -27,8 +28,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/accounts', accountRoutes);
 app.use('/api/skins', skinRoutes);
+app.use('/api/store', storeRoutes);
+app.use('/api/logs', logsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -46,15 +49,11 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Initialize caches and start scheduler
+// Initialize caches
 const startServer = async () => {
   try {
-    // Prime the skins levels cache on start
     await loadSkinsCache(true);
-    
-    // Start the background cron checker
-    initCronScheduler();
-    
+
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

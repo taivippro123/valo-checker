@@ -1,32 +1,32 @@
-# Valorant Daily Store Checker & Notification System
+# Valorant Store Checker
 
-A local dashboard for managing multiple Riot accounts, checking Valorant daily storefronts, matching shop offers with custom wishlists, and sending push notifications via `ntfy.sh`.
+A simple Riot-based storefront checker that works in a single flow: user opens the Riot login page, pastes the returned URL, and the app fetches the current storefront once for that session. The app no longer stores long-term Riot accounts, does not run cron jobs, and does not use wishlist or ntfy features.
 
 ---
 
 ## 🧩 Overview
 
-This repository contains:
-- `backend/`: Express API server, Riot auth integration, MongoDB persistence, scheduled storefront checks
-- `frontend/`: React + Vite dashboard UI for account management, wishlist editing, and storefront review
+This repository now contains:
+- `backend/`: Express API, Riot auth token parsing, storefront fetch, admin logs persistence
+- `frontend/`: React + Vite UI with a 3-step Riot URL flow and an admin logs page
 
 ---
 
-## ✅ Features
+## ✅ Current flow
 
-- Multi-account Valorant storefront monitoring
-- Wishlist-based notification alerts
-- Riot token mode and credential mode support
-- Daily shop fetch scheduling with configurable cron
-- Push notifications through `ntfy.sh`
-- Vietnamese / English UI support
+1. Open the Riot login page from the app.
+2. Log in inside that browser tab.
+3. Copy the resulting URL from the address bar.
+4. Paste the URL into the app and click “Đăng nhập”.
+5. The app fetches the storefront once and displays the daily shop, featured bundle, night market, and accessory store sections.
+6. After a successful fetch, the backend stores a log entry with the Riot ID and timestamp for the admin logs page.
 
 ---
 
 ## 🚀 Setup
 
 ### Requirements
-- Node.js v18+
+- Node.js 18+
 - MongoDB running locally or accessible via `MONGO_URI`
 
 ### Install dependencies
@@ -38,69 +38,48 @@ npm run install:all
 
 ### Run in development
 
-Start both backend and frontend together:
 ```bash
 npm run dev
-```
-
-Backend only:
-```bash
-npm run dev:backend
-```
-
-Frontend only:
-```bash
-npm run dev:frontend
 ```
 
 ---
 
 ## 🔧 Environment Configuration
 
-Create a file at `backend/.env` and add the following values.
+Create a file at `backend/.env` with values such as:
 
 ```dotenv
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/valo-check
 JWT_SECRET=super_secret_valorant_dashboard_key_123!
-# 32-byte hex key for AES-256-GCM (64 characters)
-ENCRYPTION_KEY=
-# Sharp: ap (Asian Pacific), eu (Europe), na (North America), kr (Korea), ...
-DEFAULT_SHARD=ap
-# 07:05 AM in your Timezone
-CRON_SCHEDULE=5 7 * * *
-TIMEZONE=Asia/Ho_Chi_Minh
+ENCRYPTION_KEY=your-64-char-hex-key
+ADMIN_SECRET=valo-admin-secret
 ```
 
 ### Notes
-- `JWT_SECRET`: use a strong, unique secret in production
-- `ENCRYPTION_KEY`: must be a 32-byte hex string (64 characters) for AES-256-GCM
-- `DEFAULT_SHARD`: default shard used when account shard resolution fails
-- `CRON_SCHEDULE`: cron expression for daily storefront checks
-- `TIMEZONE`: timezone used by the cron scheduler
+- `JWT_SECRET` should be a strong secret in production.
+- `ENCRYPTION_KEY` is still kept for compatibility, though the new flow no longer stores long-term account credentials.
+- `ADMIN_SECRET` is used for the admin logs endpoint when needed.
 
 ---
 
 ## 🧪 Common commands
 
 - `npm run dev` — run backend and frontend together
-- `npm run dev:backend` — start backend server only
-- `npm run dev:frontend` — start frontend dev server only
-- `npm run start:backend` — run backend in production mode
-- `npm run start:frontend` — build and preview frontend
+- `npm run dev:backend` — start backend only
+- `npm run dev:frontend` — start frontend only
 
 ---
 
-## 📁 Folder structure
+## 📁 Main routes
 
-- `backend/` — API, models, services, jobs, routes
-- `frontend/` — React app, components, styles
-- `package.json` — root scripts and workspace management
+- `POST /api/store/check` — accepts a Riot redirect URL and returns storefront data
+- `POST /api/logs` — creates a log entry after a successful storefront fetch
+- `GET /api/admin/logs` — returns admin logs for the admin page
 
 ---
 
 ## 🔐 Security
 
-- Passwords and credentials are encrypted before storage
-- Riot authentication is performed via direct Riot API interactions
-- The app does not hardcode sensitive keys in source code
+- No long-term Riot account storage is required for the new flow.
+- Admin access is protected by the standard JWT auth plus the admin secret check for the logs endpoint.

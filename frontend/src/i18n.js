@@ -55,6 +55,17 @@ const translations = {
     cancelButton: 'Cancel',
     saveButton: 'Save Account',
     refreshTokenButton: 'Refresh Token'
+    ,
+    // Dashboard specific
+    quickStepsTitle: 'Quick 3 steps',
+    quickStep1: 'Open a new tab and sign in to Riot at the',
+    quickStep2: 'After signing in, copy the full address bar URL from the browser.',
+    quickStep3: 'Paste the URL into the box below and click the button to check.',
+    guideTitle: 'Guide',
+    loginButton: 'Check Shop',
+    waitingPasteUrl: 'Paste a Riot redirect URL to view the shop.',
+    noSignupNeeded: 'No account or long-term cookie storage required. Use a fresh URL each time to view the current shop.',
+    logSavedInfo: 'The system logs the Riot ID for admin after a successful storefront fetch.'
   },
   vn: {
     addAccount: 'Thêm tài khoản Riot',
@@ -112,6 +123,17 @@ const translations = {
     cancelButton: 'Hủy',
     saveButton: 'Lưu tài khoản',
     refreshTokenButton: 'Làm mới Token'
+    ,
+    // Dashboard specific
+    quickStepsTitle: '3 bước nhanh',
+    quickStep1: 'Mở tab mới và đăng nhập Riot tại',
+    quickStep2: 'Sau khi đăng nhập, copy toàn bộ URL từ thanh địa chỉ.',
+    quickStep3: 'Dán URL vào ô bên dưới và nhấn nút để lấy cửa hàng.',
+    guideTitle: 'Hướng dẫn',
+    loginButton: 'Xem cửa hàng',
+    waitingPasteUrl: 'Chờ bạn dán URL Riot để xem cửa hàng.',
+    noSignupNeeded: 'Không cần đăng ký tài khoản hay lưu cookie lâu dài. Mỗi lần dùng một URL mới để xem cửa hàng hiện tại.',
+    logSavedInfo: 'Hệ thống sẽ ghi log Riot ID phía admin sau khi fetch storefront thành công.'
   }
 };
 
