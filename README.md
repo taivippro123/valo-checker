@@ -49,7 +49,7 @@ npm run dev
 Create a file at `backend/.env` with values such as:
 
 ```dotenv
-PORT=5000
+PORT=4000
 MONGO_URI=mongodb://127.0.0.1:27017/valo-check
 JWT_SECRET=super_secret_valorant_dashboard_key_123!
 ENCRYPTION_KEY=your-64-char-hex-key

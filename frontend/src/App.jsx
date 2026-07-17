@@ -3,8 +3,8 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AdminLogs from './components/AdminLogs';
 
-// Use env VITE_API_URL if set, or fallback to current origin host or localhost:5000
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Use env VITE_API_URL if set, or fallback to current origin host or localhost:4000
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
