@@ -49,7 +49,7 @@ export const checkAccountStorefront = async (account) => {
     }
 
     // 3. Fetch storefront offers
-    const { offers, shard: resolvedShard } = await fetchAccountStore(account.shard, authDetails.puuid, authDetails);
+    const { storefront, offers: flattenedOffers, shard: resolvedShard } = await fetchAccountStore(account.shard, authDetails.puuid, authDetails);
     if (resolvedShard && account.shard !== resolvedShard) {
       account.shard = resolvedShard;
       console.log(`[StoreCron] Updated account shard to ${resolvedShard} for ${account.alias}`);
@@ -60,11 +60,11 @@ export const checkAccountStorefront = async (account) => {
     await account.save();
 
     // 5. Compare with wishlist
-    const wishlistSet = new Set(account.wishlist.map(id => id.toLowerCase()));
+    const wishlistSet = new Set((account.wishlist || []).map(id => id.toLowerCase()));
     const matchedSkins = [];
 
-    for (const offer of offers) {
-      if (wishlistSet.has(offer.uuid.toLowerCase())) {
+    for (const offer of flattenedOffers || []) {
+      if (offer.uuid && wishlistSet.has(offer.uuid.toLowerCase())) {
         matchedSkins.push(offer);
       }
     }
@@ -82,7 +82,7 @@ export const checkAccountStorefront = async (account) => {
       console.log(`[StoreCron] No wishlist matches for account: ${account.alias}`);
     }
 
-    return { success: true, offers };
+    return { success: true, storefront, offers: flattenedOffers };
   } catch (error) {
     console.error(`[StoreCron] Error checking account ${account.alias}:`, error.message);
     

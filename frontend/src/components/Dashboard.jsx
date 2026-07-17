@@ -169,8 +169,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       {/* Main Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Column: Riot Account list (5 columns wide) */}
-        <section className="lg:col-span-5 space-y-4">
+        {/* Left Column: Riot Account list (expanded responsive panel) */}
+        <section className="lg:col-span-7 xl:col-span-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-valorant-gold flex items-center gap-2">
               <Activity className="w-4 h-4 text-valorant-red" /> {t.addAccount}
@@ -232,8 +232,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
           </div>
         </section>
 
-        {/* Right Column: Wishlist selector (7 columns wide) */}
-        <section className="lg:col-span-7">
+        {/* Right Column: Wishlist selector */}
+        <section className="lg:col-span-5 xl:col-span-6">
           <WishlistSelector
             activeAccount={activeAccount}
             onWishlistUpdated={handleWishlistUpdated}

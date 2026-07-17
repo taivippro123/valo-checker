@@ -333,7 +333,8 @@ router.post('/:id/check', protect, async (req, res) => {
     if (result.success) {
       res.json({
         message: 'Storefront check completed successfully.',
-        offers: result.offers
+        storefront: result.storefront || null,
+        offers: result.offers || []
       });
     } else {
       res.status(500).json({ 
