@@ -3,21 +3,26 @@
 
 export default async function handler(req, res) {
   try {
-    const { path = [] } = req.query || {};
+    const rawPath = req.query.path || req.query['...path'] || [];
     const base = process.env.VPS_ORIGIN;
     if (!base) {
       res.status(500).json({ error: 'VPS_ORIGIN is not configured in environment' });
       return;
     }
 
-    const suffix = Array.isArray(path) ? path.join('/') : path;
-    const query = req.url && req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-    const target = `${base.replace(/\/$/, '')}/${suffix}${query}`;
+    const suffix = Array.isArray(rawPath) ? rawPath.join('/') : rawPath;
+    const parsedUrl = new URL(req.url, 'http://localhost');
+    parsedUrl.searchParams.delete('path');
+    parsedUrl.searchParams.delete('...path');
+    const queryString = parsedUrl.searchParams.toString() ? `?${parsedUrl.searchParams.toString()}` : '';
+    const baseUrl = base.replace(/\/$/, '');
+    const target = suffix ? `${baseUrl}/${suffix}${queryString}` : `${baseUrl}${queryString}`;
 
     console.log('Vercel proxy request:', {
       method: req.method,
+      rawPath,
       suffix,
-      query,
+      queryString,
       target,
       vpsOrigin: base
     });
