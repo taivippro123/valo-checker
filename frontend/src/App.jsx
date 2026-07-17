@@ -3,8 +3,9 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AdminLogs from './components/AdminLogs';
 
-// Use env VITE_API_URL if set, otherwise use same host.
-const API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
+// Use env VITE_API_URL if set, otherwise default to local backend in development.
+const rawApiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+const API_URL = rawApiUrl ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');

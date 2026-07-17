@@ -20,15 +20,8 @@ connectDB();
 const app = express();
 
 // Middleware
-const allowedOrigins = ['https://valocheck.vercel.app', 'http://localhost:5173', 'https://localhost:5173'];
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS policy blocked origin: ${origin}`));
-    }
-  },
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
