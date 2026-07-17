@@ -185,6 +185,94 @@ export const getEntitlements = async (accessToken) => {
   }
 };
 
+const sanitizeCookieString = (cookieString) => {
+  if (!cookieString || typeof cookieString !== 'string') {
+    return '';
+  }
+
+  return cookieString
+    .split(';')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => {
+      const [key, ...valueParts] = segment.split('=');
+      const value = valueParts.join('=');
+      return value ? `${key.trim()}=${value.trim()}` : null;
+    })
+    .filter(Boolean)
+    .join('; ');
+};
+
+export const refreshTokenWithCookie = async (cookieString) => {
+  try {
+    console.log('[RiotAuth] Refreshing token using Riot session cookie...');
+    const sanitizedCookie = sanitizeCookieString(cookieString);
+    if (!sanitizedCookie) {
+      throw new Error('COOKIE_EXPIRED');
+    }
+
+    const response = await axios.get(
+      'https://auth.riotgames.com/authorize?redirect_uri=https%3A%2F%2Fplayvalorant.com%2Fopt_in&client_id=play-valorant-web-prod&response_type=token%20id_token&nonce=1&scope=account%20openid',
+      {
+        headers: {
+          Cookie: sanitizedCookie,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+        },
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400
+      }
+    );
+
+    if (![302, 303].includes(response.status)) {
+      console.error('[RiotAuth] Cookie auth did not redirect as expected.', response.status, response.data?.toString?.());
+      throw new Error('COOKIE_EXPIRED');
+    }
+
+    const redirectUrl = response.headers.location;
+    if (!redirectUrl) {
+      throw new Error('COOKIE_EXPIRED');
+    }
+
+    const hash = redirectUrl.split('#')[1] || '';
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const idToken = params.get('id_token');
+    const expiresIn = parseInt(params.get('expires_in') || '3600', 10);
+
+    if (!accessToken) {
+      throw new Error('COOKIE_EXPIRED');
+    }
+
+    const entitlementToken = await getEntitlements(accessToken);
+    const tokenParts = accessToken.split('.');
+    if (tokenParts.length < 2) {
+      throw new Error('Failed to parse access token payload');
+    }
+
+    const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString('utf8'));
+    const puuid = payload.sub;
+
+    return {
+      accessToken,
+      entitlementToken,
+      idToken,
+      puuid,
+      expiresIn
+    };
+  } catch (error) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error('COOKIE_EXPIRED');
+    }
+    if (error.message === 'COOKIE_EXPIRED') {
+      throw error;
+    }
+
+    console.error('[RiotAuth] Cookie reauth error:', error.response?.data || error.message);
+    throw new Error(`Cookie reauth failed: ${error.message}`);
+  }
+};
+
 /**
  * Fetch player profile info (game_name, tag_line) using Access Token
  * @param {string} accessToken 

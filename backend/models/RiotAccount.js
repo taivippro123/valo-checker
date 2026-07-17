@@ -28,6 +28,10 @@ const riotAccountSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  cookieString: {
+    type: String,
+    default: ''
+  },
   alias: {
     type: String,
     required: true,

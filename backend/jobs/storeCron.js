@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import RiotAccount from '../models/RiotAccount.js';
 import { decrypt } from '../services/encryptionService.js';
-import { authenticateAccount, getClientVersion } from '../services/riotAuthService.js';
+import { authenticateAccount, getClientVersion, refreshTokenWithCookie } from '../services/riotAuthService.js';
 import { fetchAccountStore } from '../services/storeService.js';
 import { sendPushNotification } from '../services/ntfyService.js';
 
@@ -18,9 +18,34 @@ export const checkAccountStorefront = async (account) => {
     let authDetails;
     
     if (account.authMode === 'token') {
-      // Check if token is expired (1 hour TTL)
-      if (account.tokenExpiresAt && new Date() > new Date(account.tokenExpiresAt)) {
-        throw new Error('TOKEN_EXPIRED');
+      const now = new Date();
+      const expiresAt = account.tokenExpiresAt ? new Date(account.tokenExpiresAt) : null;
+      const isExpired = !account.accessToken || (expiresAt && now >= expiresAt);
+      const isExpiringSoon = expiresAt && expiresAt.getTime() - now.getTime() < 10 * 60 * 1000;
+
+      if (isExpired || isExpiringSoon) {
+        if (account.cookieString && account.cookieString.trim()) {
+          try {
+            console.log(`[StoreCron] Attempting cookie reauth for token refresh on account: ${account.alias}`);
+            const cookieAuth = await refreshTokenWithCookie(account.cookieString);
+            account.accessToken = cookieAuth.accessToken;
+            account.entitlementToken = cookieAuth.entitlementToken;
+            account.tokenExpiresAt = new Date(Date.now() + (cookieAuth.expiresIn || 3600) * 1000);
+            if (cookieAuth.puuid) {
+              account.puuid = cookieAuth.puuid;
+            }
+            await account.save();
+            console.log(`[StoreCron] Successfully refreshed token via cookie for account: ${account.alias}`);
+          } catch (cookieError) {
+            console.error(`[StoreCron] Cookie reauth failed for ${account.alias}:`, cookieError.message);
+            if (cookieError.message === 'COOKIE_EXPIRED') {
+              throw new Error('COOKIE_EXPIRED');
+            }
+            throw cookieError;
+          }
+        } else {
+          throw new Error('TOKEN_EXPIRED');
+        }
       }
       
       const clientVersion = await getClientVersion();
@@ -134,7 +159,7 @@ export const checkAllAccounts = async () => {
  * Initialize the node-cron scheduler
  */
 export const initCronScheduler = () => {
-  const schedulePattern = process.env.CRON_SCHEDULE || '5 7 * * *'; // default 07:05 AM
+  const schedulePattern = process.env.CRON_SCHEDULE || '*/50 * * * *'; // default: every 50 minutes
   const timezone = process.env.TIMEZONE || 'Asia/Ho_Chi_Minh';
   
   console.log(`[StoreCron] Initializing cron job pattern "${schedulePattern}" for timezone "${timezone}"`);

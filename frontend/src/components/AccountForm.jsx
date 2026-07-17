@@ -14,6 +14,7 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
   const [password, setPassword] = useState('');
   const [ntfyTopic, setNtfyTopic] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
+  const [cookieString, setCookieString] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +26,7 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
       setPassword('');
       setNtfyTopic(accountToEdit.ntfyTopic || '');
       setRedirectUrl('');
+      setCookieString('');
     } else {
       setAuthMode('token');
       setAlias('');
@@ -32,6 +34,7 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
       setPassword('');
       setNtfyTopic('');
       setRedirectUrl('');
+      setCookieString('');
     }
     setError('');
     setLoading(false);
@@ -52,13 +55,18 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
     }
 
     if (authMode === 'token') {
-      if (!redirectUrl.trim()) {
-        setError(t.redirectUrlRequired);
+      if (!redirectUrl.trim() && !cookieString.trim()) {
+        setError(t.cookieOrRedirectRequired);
         setLoading(false);
         return;
       }
-      if (!redirectUrl.includes('playvalorant.com') || !redirectUrl.includes('access_token=')) {
+      if (redirectUrl.trim() && (!redirectUrl.includes('playvalorant.com') || !redirectUrl.includes('access_token='))) {
         setError(t.invalidUrlFormat);
+        setLoading(false);
+        return;
+      }
+      if (cookieString.trim() && !cookieString.includes('ssid=')) {
+        setError(t.invalidCookieString);
         setLoading(false);
         return;
       }
@@ -84,7 +92,8 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
         };
 
         if (authMode === 'token') {
-          data.redirectUrl = redirectUrl.trim();
+          if (redirectUrl.trim()) data.redirectUrl = redirectUrl.trim();
+          if (cookieString.trim()) data.cookieString = cookieString.trim();
         } else {
           data.username = username.trim();
           if (password.trim()) data.password = password.trim();
@@ -215,7 +224,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
                   2. {t.pasteRedirectUrl}
                 </label>
                 <textarea
-                  required
                   rows="3"
                   value={redirectUrl}
                   onChange={(e) => setRedirectUrl(e.target.value)}
@@ -225,6 +233,24 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
                 />
                 <p className="text-[10px] text-valorant-gray leading-relaxed">
                   {t.redirectHelp}
+                </p>
+              </div>
+
+              {/* Step 3: Or paste Riot session cookie string */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold tracking-wider text-valorant-gold uppercase">
+                  3. {t.pasteCookieString}
+                </label>
+                <textarea
+                  rows="3"
+                  value={cookieString}
+                  onChange={(e) => setCookieString(e.target.value)}
+                  placeholder="ssid=...; csid=...; clid=as1"
+                  disabled={loading}
+                  className="w-full bg-valorant-darker border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-valorant-gray/30 focus:outline-none focus:border-valorant-red transition-colors disabled:opacity-50 font-mono"
+                />
+                <p className="text-[10px] text-valorant-gray leading-relaxed">
+                  {t.cookieStringHelp}
                 </p>
               </div>
             </div>
