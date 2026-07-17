@@ -14,6 +14,14 @@ export default async function handler(req, res) {
     const query = req.url && req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
     const target = `${base.replace(/\/$/, '')}/${suffix}${query}`;
 
+    console.log('Vercel proxy request:', {
+      method: req.method,
+      suffix,
+      query,
+      target,
+      vpsOrigin: base
+    });
+
     const forwardHeaders = { ...req.headers };
     delete forwardHeaders.host;
 
