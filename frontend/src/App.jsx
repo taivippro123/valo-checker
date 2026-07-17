@@ -3,9 +3,9 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AdminLogs from './components/AdminLogs';
 
-// Use env VITE_API_URL if set, or fallback to local backend.
-// In production we want VITE_API_URL=/api and then calls use /store/check.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Use env VITE_API_URL if set, or fallback to /api in production.
+// In development this can be overridden with VITE_API_URL=http://localhost:4000.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
