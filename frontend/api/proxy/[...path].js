@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     parsedUrl.searchParams.delete('...path');
     const queryString = parsedUrl.searchParams.toString() ? `?${parsedUrl.searchParams.toString()}` : '';
     const baseUrl = base.replace(/\/$/, '');
-    const target = suffix ? `${baseUrl}/${suffix}${queryString}` : `${baseUrl}${queryString}`;
+    const target = suffix ? `${baseUrl}/api/${suffix}${queryString}` : `${baseUrl}/api${queryString}`;
 
     console.log('Vercel proxy request:', {
       method: req.method,
