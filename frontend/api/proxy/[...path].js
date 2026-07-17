@@ -48,6 +48,15 @@ export default async function handler(req, res) {
     }
 
     const proxied = await fetch(target, opts);
+    const buffer = await proxied.arrayBuffer();
+    const bodyText = Buffer.from(buffer).toString('utf8');
+
+    console.log('Vercel proxy response:', {
+      status: proxied.status,
+      target,
+      contentType: proxied.headers.get('content-type'),
+      bodyPreview: bodyText.slice(0, 1000)
+    });
 
     res.status(proxied.status);
     proxied.headers.forEach((value, key) => {
@@ -55,7 +64,6 @@ export default async function handler(req, res) {
       res.setHeader(key, value);
     });
 
-    const buffer = await proxied.arrayBuffer();
     res.send(Buffer.from(buffer));
   } catch (err) {
     console.error('Proxy error', err);
