@@ -90,7 +90,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Featured Bundle</h5>
             <span className="text-[10px] text-valorant-gray">Bundle</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.featuredBundle.items.map((item, idx) => {
               const priceText = [item.basePrice ? `${item.basePrice} VP` : '', item.discountedPrice ? `${item.discountedPrice} VP` : '', item.discountPercent ? `${item.discountPercent}%` : ''].filter(Boolean).join(' • ');
               return <div key={idx} className="min-h-0">{renderCard(item, item.metadata?.displayName, priceText)}</div>;
@@ -107,7 +107,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Daily 4 Skins</h5>
             <span className="text-[10px] text-valorant-gray">Daily Shop</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.skinsPanel.offers.map((offer, idx) => <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, offer.priceVP ? `${offer.priceVP} VP` : '')}</div>)}
           </div>
         </div>
@@ -121,7 +121,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Night Market / Bonus Store</h5>
             <span className="text-[10px] text-valorant-gray">Discounted</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.bonusStore.offers.map((offer, idx) => {
             const priceInfo = {
               basePrice: offer.basePrice,
@@ -142,7 +142,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Accessory Store</h5>
             <span className="text-[10px] text-valorant-gray">KC</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.accessoryStore.offers.map((offer, idx) => <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, offer.price ? `${offer.price} KC` : '')}</div>)}
           </div>
         </div>

@@ -275,7 +275,7 @@ const AccountList = ({
                     {storefront.featuredBundle.bundleMeta?.verticalPromoImage || storefront.featuredBundle.bundleMeta?.displayIcon ? (
                       <img src={storefront.featuredBundle.bundleMeta.verticalPromoImage || storefront.featuredBundle.bundleMeta.displayIcon} alt="Featured Bundle" className="w-full rounded-lg mb-3 object-cover" />
                     ) : null}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {storefront.featuredBundle.items.map((item, idx) => {
                         const meta = item.metadata || {};
                         const priceText = [item.basePrice ? `${item.basePrice} VP` : '', item.discountedPrice ? `${item.discountedPrice} VP` : '', item.discountPercent ? `${item.discountPercent}%` : ''].filter(Boolean).join(' • ');
@@ -295,7 +295,7 @@ const AccountList = ({
                       </h5>
                       <span className="text-[10px] text-valorant-gray">Daily Shop</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {storefront.skinsPanel.offers.map((offer, idx) => {
                         const priceText = offer.priceVP ? `${offer.priceVP} VP` : '';
                         return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, priceText)}</div>;
@@ -314,7 +314,7 @@ const AccountList = ({
                       </h5>
                       <span className="text-[10px] text-valorant-gray">Discounted</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {storefront.bonusStore.offers.map((offer, idx) => {
                         const priceInfo = {
                           basePrice: offer.basePrice,
@@ -337,7 +337,7 @@ const AccountList = ({
                       </h5>
                       <span className="text-[10px] text-valorant-gray">KC</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {storefront.accessoryStore.offers.map((offer, idx) => {
                         const priceText = offer.price ? `${offer.price} KC` : '';
                         return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, priceText)}</div>;
@@ -355,7 +355,7 @@ const AccountList = ({
                         <Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Daily Offers
                       </h5>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {storefront.map((offer, idx) => <div key={idx} className="min-h-0">{renderCard({ uuid: offer.uuid, metadata: { displayName: offer.displayName, displayIcon: offer.displayIcon } }, offer.displayName, '')}</div>)}
                     </div>
                   </div>
