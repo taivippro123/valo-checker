@@ -233,19 +233,32 @@ const AccountList = ({
               const storefront = shopOffers?.storefront || shopOffers;
               const sections = [];
 
-              const renderCard = (item, label, priceText) => {
+              const renderCard = (item, label, priceText, priceInfo = {}) => {
                 const meta = item.metadata || {};
                 const isWishlisted = (account.wishlist || []).includes(item.itemId || item.uuid);
                 return (
                   <div className={`p-3 rounded-2xl border text-center relative flex flex-col justify-between min-h-[16rem] ${isWishlisted ? 'bg-valorant-red/10 border-valorant-red/40' : 'bg-valorant-dark border-white/5'}`}>
                     {isWishlisted && <span className="absolute top-2 right-2 bg-valorant-red text-[8px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-full">Match</span>}
+                    {priceInfo.discountPercent ? (
+                      <span className="absolute top-2 left-2 rounded-full bg-valorant-red text-[10px] font-semibold uppercase tracking-[0.12em] text-white px-2 py-0.5 shadow-sm">-{priceInfo.discountPercent}%</span>
+                    ) : null}
                     <div className="relative h-40 w-full flex items-center justify-center p-2 mb-3 rounded-2xl bg-black/10 overflow-hidden">
                       {meta.displayIcon ? <img src={meta.displayIcon} alt={meta.displayName} className="h-full w-full object-contain" /> : <span className="text-sm text-valorant-gray">No image</span>}
+                      {meta.contentTier?.displayIcon ? (
+                        <div className="absolute bottom-2 left-2 w-8 h-8 rounded-full bg-white/10 ring-1 ring-white/20 shadow-[0_0_8px_rgba(0,0,0,0.25)] p-[2px] backdrop-blur-sm">
+                          <img src={meta.contentTier.displayIcon} alt={meta.contentTier.displayName || 'Tier'} className="h-full w-full object-contain rounded-full" />
+                        </div>
+                      ) : null}
                     </div>
                     <div className="text-sm font-bold text-white tracking-wide whitespace-normal break-words min-h-[4rem] leading-snug">
                       <span className="block">{meta.displayName || label || 'Unknown'}</span>
                     </div>
-                    {priceText ? <div className="text-xs text-valorant-gray mt-2">{priceText}</div> : null}
+                    {priceInfo.discountPercent ? (
+                      <div className="mt-2 flex flex-col items-center gap-1">
+                        {priceInfo.discountedPrice ? <span className="text-sm font-bold text-white">{priceInfo.discountedPrice} VP</span> : null}
+                        {priceInfo.basePrice ? <span className="text-[11px] text-valorant-gray line-through">{priceInfo.basePrice} VP</span> : null}
+                      </div>
+                    ) : priceText ? <div className="text-xs text-valorant-gray mt-2">{priceText}</div> : null}
                   </div>
                 );
               };
@@ -303,8 +316,12 @@ const AccountList = ({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                       {storefront.bonusStore.offers.map((offer, idx) => {
-                        const priceText = [offer.basePrice ? `${offer.basePrice} VP` : '', offer.discountedPrice ? `${offer.discountedPrice} VP` : '', offer.discountPercent ? `${offer.discountPercent}%` : ''].filter(Boolean).join(' • ');
-                        return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, priceText)}</div>;
+                        const priceInfo = {
+                          basePrice: offer.basePrice,
+                          discountedPrice: offer.discountedPrice,
+                          discountPercent: offer.discountPercent
+                        };
+                        return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, null, priceInfo)}</div>;
                       })}
                     </div>
                   </div>
