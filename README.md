@@ -10,6 +10,7 @@ A simple Riot-based storefront checker that works in a single flow: the user ope
 
 ![Demo](assets/demo.gif)
 
+A simple Riot-based storefront checker that works in a single flow: the user opens the Riot login page, pastes the returned URL, and the app fetches the current storefront for that session. The application not stores Riot account credentials.
 ---
 
 ## 🧩 Overview
