@@ -4,6 +4,7 @@ import { LogOut, Terminal, Globe, ShieldCheck, Activity, ExternalLink, Sparkles,
 import translations from '../i18n';
 import FAQ from './FAQ';
 import Footer from './Footer';
+import InventoryPanel from './InventoryPanel';
 
 const Dashboard = ({ onLogout, API_URL, username }) => {
   const [redirectUrl, setRedirectUrl] = useState('');
@@ -11,6 +12,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const [serverHealth, setServerHealth] = useState({ ok: false, message: 'Checking...' });
   const [language, setLanguage] = useState('en');
   const [storefront, setStorefront] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [activeTab, setActiveTab] = useState('store');
   const [error, setError] = useState('');
   const [riotId, setRiotId] = useState('');
   const [shard, setShard] = useState('');
@@ -50,11 +53,14 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
 
     setLoading(true);
     setStorefront(null);
+    setProfile(null);
+    setActiveTab('store');
     setExpandedBundles({});
 
     try {
       const res = await axios.post(`${API_URL}/api/store/check`, { redirectUrl });
       setStorefront(res.data.storefront || null);
+      setProfile(res.data.profile || null);
       setRiotId(res.data.riotId || '');
       setShard(res.data.shard || '');
       // clear the input after successful check
@@ -347,7 +353,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             </form>
             {error && <div className="mt-3 text-sm text-valorant-red">{error}</div>}
             {riotId && <div className="mt-3 text-base font-semibold text-emerald-400">{t.riotIDLabel} {riotId} • {language === 'vn' ? 'Vùng' : 'Region'}: {shard || 'ap'}</div>}
-            {storefront && riotId && (
+            {(storefront || profile) && riotId && (
               <div className="mt-2 text-sm text-valorant-gray">
                 <span>{t.checkAnotherAccountPart1} </span>
                 <a href={t.signOutUrl} target="_blank" rel="noreferrer" className="text-valorant-gold underline hover:text-white">{t.checkAnotherAccountLink}</a>
@@ -361,14 +367,41 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
 
         <section className="lg:col-span-7">
           <div className="glass-panel rounded-xl p-5 border border-white/5 min-h-[650px]">
-            {!storefront ? (
+            {!storefront && !profile ? (
               <div className="h-full flex items-center justify-center text-center text-valorant-gray">
                 <div>
                   <Sparkles className="w-12 h-12 mx-auto mb-3 text-valorant-red/50" />
                   <p>{t.waitingPasteUrl}</p>
                 </div>
               </div>
-            ) : renderStorefront()}
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-5 border-b border-white/5 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('store')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'store' ? 'bg-valorant-red text-white' : 'text-valorant-gray hover:text-white hover:bg-white/5'}`}
+                  >
+                    {t.tabViewStore}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('inventory')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-valorant-red text-white' : 'text-valorant-gray hover:text-white hover:bg-white/5'}`}
+                  >
+                    {t.tabViewInventory}
+                  </button>
+                </div>
+
+                {activeTab === 'store' ? (
+                  storefront ? renderStorefront() : (
+                    <div className="text-sm text-valorant-gray py-10 text-center">{t.storeUnavailable}</div>
+                  )
+                ) : (
+                  <InventoryPanel profile={profile} riotId={riotId} t={t} />
+                )}
+              </>
+            )}
           </div>
         </section>
       </main>
