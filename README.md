@@ -4,6 +4,12 @@ A simple Riot-based storefront checker that works in a single flow: user opens t
 
 ---
 
+## Demo
+
+![Demo](assets/demo.gif)
+
+---
+
 ## 🧩 Overview
 
 This repository now contains:
