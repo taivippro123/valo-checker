@@ -213,6 +213,13 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             </form>
             {error && <div className="mt-3 text-sm text-valorant-red">{error}</div>}
             {riotId && <div className="mt-3 text-base font-semibold text-emerald-400">{t.riotIDLabel} {riotId} • {language === 'vn' ? 'Vùng' : 'Region'}: {shard || 'ap'}</div>}
+            {storefront && riotId && (
+              <div className="mt-2 text-sm text-valorant-gray">
+                <span>{t.checkAnotherAccountPart1} </span>
+                <a href={t.signOutUrl} target="_blank" rel="noreferrer" className="text-valorant-gold underline hover:text-white">{t.checkAnotherAccountLink}</a>
+                <span> {t.checkAnotherAccountPart2}</span>
+              </div>
+            )}
           </div>
 
          

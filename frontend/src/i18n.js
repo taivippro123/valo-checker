@@ -55,8 +55,10 @@ const translations = {
     loginButton: 'Check Shop',
     waitingPasteUrl: 'Paste a Riot redirect URL to view the shop.',
     noSignupNeeded: 'No account or long-term cookie storage required. Use a fresh URL each time to view the current shop.',
-    logSavedInfo: 'The system logs the Riot ID for admin after a successful storefront fetch.'
-    ,
+    checkAnotherAccountPart1: 'If you want to check skins on another account, click',
+    checkAnotherAccountLink: 'sign out',
+    checkAnotherAccountPart2: 'before logging in again.',
+    signOutUrl: 'https://login.riotgames.com/end-session-redirect?redirect_uri=https%3A%2F%2Fauth.riotgames.com%2Flogout',
     // FAQ and footer
     brand: 'VALOCHECK',
     faqTitle: 'FAQ',
@@ -133,8 +135,10 @@ const translations = {
     loginButton: 'Xem cửa hàng',
     waitingPasteUrl: 'Chờ bạn dán URL Riot để xem cửa hàng.',
     noSignupNeeded: 'Không cần đăng ký tài khoản hay lưu cookie lâu dài. Mỗi lần dùng một URL mới để xem cửa hàng hiện tại.',
-    logSavedInfo: 'Hệ thống sẽ ghi log Riot ID phía admin sau khi fetch storefront thành công.'
-    ,
+    checkAnotherAccountPart1: 'Nếu bạn muốn check skin ở tài khoản khác, bấm ',
+    checkAnotherAccountLink: 'đăng xuất',
+    checkAnotherAccountPart2: 'trước khi đăng nhập lại.',
+    signOutUrl: 'https://login.riotgames.com/end-session-redirect?redirect_uri=https%3A%2F%2Fauth.riotgames.com%2Flogout',
     // FAQ and footer
     brand: 'VALOCHECK',
     faqTitle: 'FAQ',
