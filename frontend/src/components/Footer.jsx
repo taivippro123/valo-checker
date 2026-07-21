@@ -8,10 +8,24 @@ const Footer = ({ language = 'en' }) => {
   return (
     <footer className="mt-10 bg-gradient-to-t from-black/80 via-black/60 to-transparent">
       <div className="max-w-7xl mx-auto p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div>
-          <h4 className="text-2xl font-extrabold text-valorant-red tracking-wider">{t.brand}</h4>
-          <p className="mt-2 text-sm text-valorant-gray max-w-xl">{t.footerText}</p>
-        </div>
+        <div className="flex items-start gap-4">
+  <img
+    src="/logo.png"
+    alt="VALOCHECK"
+    className="w-14 h-14 object-contain opacity-95 drop-shadow-[0_0_14px_rgba(255,70,85,0.45)]"
+    draggable={false}
+  />
+
+  <div>
+    <h4 className="text-2xl font-black tracking-[0.18em] uppercase text-valorant-red">
+      {t.brand}
+    </h4>
+
+    <p className="mt-2 text-sm text-valorant-gray max-w-xl">
+      {t.footerText}
+    </p>
+  </div>
+</div>
 
         <div className="ml-auto text-right flex flex-col items-end gap-2">
           <a href="https://github.com/taivippro123/valo-checker" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-valorant-gray hover:text-white">

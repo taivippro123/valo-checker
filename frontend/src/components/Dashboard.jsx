@@ -316,9 +316,12 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       <header className="glass-panel border-b border-white/5 px-6 py-4 shrink-0 relative z-20">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-valorant-red/10 rounded-xl flex items-center justify-center border border-valorant-red/20 shadow-[0_0_10px_rgba(255,70,85,0.15)]">
-              <Terminal className="w-5 h-5 text-valorant-red" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="VALOCHECK"
+              className="w-11 h-11 object-contain drop-shadow-[0_0_12px_rgba(255,70,85,0.55)] select-none"
+              draggable={false}
+            />
             <div>
               <h1 className="text-md font-bold tracking-widest uppercase text-valorant-red">{t.brand || 'VALOCHECK'}</h1>
               <p className="text-[10px] text-valorant-gray font-mono mt-0.5 flex items-center gap-1.5">
