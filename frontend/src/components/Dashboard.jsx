@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LogOut, Terminal, Globe, ShieldCheck, Activity, ExternalLink, Sparkles, RefreshCw } from 'lucide-react';
+import { LogOut, Terminal, Globe, ShieldCheck, Activity, ExternalLink, Sparkles, RefreshCw, ChevronDown } from 'lucide-react';
 import translations from '../i18n';
 import FAQ from './FAQ';
 import Footer from './Footer';
@@ -14,6 +14,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const [error, setError] = useState('');
   const [riotId, setRiotId] = useState('');
   const [shard, setShard] = useState('');
+  const [expandedBundles, setExpandedBundles] = useState({});
   const t = translations[language] || translations.vn;
 
   const checkHealth = async () => {
@@ -49,6 +50,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
 
     setLoading(true);
     setStorefront(null);
+    setExpandedBundles({});
 
     try {
       const res = await axios.post(`${API_URL}/api/store/check`, { redirectUrl });
@@ -102,19 +104,151 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       );
     };
 
-    if (storefront.featuredBundle?.items?.length) {
+    const formatDiscountPercent = (value) => {
+      if (value == null || Number.isNaN(Number(value))) return null;
+      const numeric = Number(value);
+      return numeric <= 1 ? Math.round(numeric * 100) : Math.round(numeric);
+    };
+
+    const getItemTypeLabel = (category) => {
+      const labels = {
+        weapon: t.itemTypeWeapon,
+        buddies: t.itemTypeBuddies,
+        spray: t.itemTypeSpray,
+        flex: t.itemTypeFlex,
+        playercard: t.itemTypePlayerCard,
+        playertitle: t.itemTypePlayerTitle
+      };
+      return labels[category] || null;
+    };
+
+    const formatBundleItemPrice = (item) => {
+      const discounted = item.discountedPrice;
+      const base = item.basePrice;
+      const discountPercent = formatDiscountPercent(item.discountPercent);
+
+      if (discounted === 0) {
+        return { primary: t.featuredBundleFree, secondary: base ? `${base} VP` : null, discountPercent };
+      }
+
+      if (discounted != null && base != null && discounted !== base) {
+        return { primary: `${discounted} VP`, secondary: `${base} VP`, discountPercent };
+      }
+
+      if (discounted != null) {
+        return { primary: `${discounted} VP`, secondary: null, discountPercent };
+      }
+
+      if (base != null) {
+        return { primary: `${base} VP`, secondary: null, discountPercent };
+      }
+
+      return { primary: '', secondary: null, discountPercent };
+    };
+
+    const featuredBundles = storefront.featuredBundles?.length
+      ? storefront.featuredBundles
+      : storefront.featuredBundle?.items?.length
+        ? [storefront.featuredBundle]
+        : [];
+
+    if (featuredBundles.length) {
       sections.push(
-        <div key="featuredBundle" className="mt-3 p-4 bg-valorant-darker/60 rounded-lg border border-white/5">
-          <div className="flex items-center justify-between mb-3">
-            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Featured Bundle</h5>
-            <span className="text-[10px] text-valorant-gray">Bundle</span>
+        <div key="featuredBundles" className="mt-3 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-valorant-red" /> {t.featuredBundleTitle}
+            </h5>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {storefront.featuredBundle.items.map((item, idx) => {
-              const priceText = [item.basePrice ? `${item.basePrice} VP` : '', item.discountedPrice ? `${item.discountedPrice} VP` : '', item.discountPercent ? `${item.discountPercent}%` : ''].filter(Boolean).join(' • ');
-              return <div key={idx} className="min-h-0">{renderCard(item, item.metadata?.displayName, priceText)}</div>;
-            })}
-          </div>
+
+          {featuredBundles.map((bundle, bundleIdx) => {
+            if (!bundle?.items?.length) return null;
+
+            const bundleKey = bundle.bundleId || bundle.dataAssetId || `bundle-${bundleIdx}`;
+            const isOpen = !!expandedBundles[bundleKey];
+            const bundleName = bundle.bundleMeta?.displayName || t.featuredBundleTitle;
+            const bundleImage = bundle.bundleMeta?.verticalPromoImage || bundle.bundleMeta?.displayIcon || null;
+            const totalDiscounted = bundle.totalDiscountedCost?.['85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741'];
+            const totalBase = bundle.totalBaseCost?.['85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741'];
+            const bundleDiscountPercent = formatDiscountPercent(bundle.totalDiscountPercent);
+            const itemCountLabel = (t.featuredBundleItemCount || '{count} items').replace('{count}', bundle.items.length);
+
+            return (
+              <div key={bundleKey} className="rounded-xl border border-white/5 bg-valorant-darker/60 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedBundles((prev) => ({ ...prev, [bundleKey]: !prev[bundleKey] }))}
+                  className="w-full flex items-center gap-5 p-4 text-left hover:bg-white/5 transition-colors"
+                  aria-expanded={isOpen}
+                >
+                  {bundleImage ? (
+                    <img src={bundleImage} alt={bundleName} className="h-28 w-28 object-contain rounded-lg bg-black/20 shrink-0" />
+                  ) : (
+                    <div className="h-28 w-28 rounded-lg bg-black/20 shrink-0 flex items-center justify-center text-[10px] text-valorant-gray uppercase">Bundle</div>
+                  )}
+
+                  <div className="flex-1 min-w-0 pl-1">
+                    <h6 className="text-base font-bold text-white truncate">{bundleName}</h6>
+                    <p className="mt-1 text-xs text-valorant-gray">{itemCountLabel}</p>
+                    {totalDiscounted != null ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                        {totalBase != null && totalBase !== totalDiscounted ? (
+                          <span className="text-valorant-gray line-through">{totalBase} VP</span>
+                        ) : null}
+                        <span className="text-white font-semibold">{totalDiscounted === 0 ? t.featuredBundleFree : `${totalDiscounted} VP`}</span>
+                        {bundleDiscountPercent ? (
+                          <span className="rounded-full bg-valorant-red/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">-{bundleDiscountPercent}%</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <p className="mt-1 text-[10px] text-valorant-gray">{isOpen ? t.featuredBundleCollapse : t.featuredBundleExpand}</p>
+                  </div>
+
+                  <ChevronDown className={`w-5 h-5 text-valorant-gray shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isOpen ? (
+                  <div className="border-t border-white/5 p-3 space-y-2 bg-black/10">
+                    {bundle.items.map((item, idx) => {
+                      const meta = item.metadata || {};
+                      const typeLabel = getItemTypeLabel(meta.itemCategory);
+                      const priceInfo = formatBundleItemPrice(item);
+                      const image = meta.displayIcon || meta.image;
+
+                      return (
+                        <div key={`${bundleKey}-item-${idx}`} className="flex items-center gap-3 rounded-lg border border-white/5 bg-valorant-dark/80 p-3">
+                          <div className="h-14 w-14 shrink-0 rounded-lg bg-black/20 flex items-center justify-center overflow-hidden">
+                            {image ? (
+                              <img src={image} alt={meta.displayName} className="h-full w-full object-contain" />
+                            ) : (
+                              <span className="text-[10px] text-valorant-gray">N/A</span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white break-words">{meta.displayName || 'Unknown'}</p>
+                            {typeLabel ? (
+                              <span className="mt-1 inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-valorant-gold">
+                                {typeLabel}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            {priceInfo.discountPercent ? (
+                              <span className="mb-1 block rounded-full bg-valorant-red/90 px-2 py-0.5 text-[10px] font-semibold text-white">-{priceInfo.discountPercent}%</span>
+                            ) : null}
+                            {priceInfo.primary ? <div className="text-sm font-bold text-white">{priceInfo.primary}</div> : null}
+                            {priceInfo.secondary ? <div className="text-[11px] text-valorant-gray line-through">{priceInfo.secondary}</div> : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -123,8 +257,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       sections.push(
         <div key="skinsPanel" className="mt-3 p-4 bg-valorant-darker/60 rounded-lg border border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Daily 4 Skins</h5>
-            <span className="text-[10px] text-valorant-gray">Daily Shop</span>
+            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> {t.dailySkinsTitle}</h5>
+            <span className="text-[10px] text-valorant-gray">{t.dailyShop}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.skinsPanel.offers.map((offer, idx) => <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, offer.priceVP ? `${offer.priceVP} VP` : '')}</div>)}
@@ -137,18 +271,18 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       sections.push(
         <div key="bonusStore" className="mt-3 p-4 bg-valorant-darker/60 rounded-lg border border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Night Market / Bonus Store</h5>
-            <span className="text-[10px] text-valorant-gray">Discounted</span>
+            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> {t.nightMarketTitle}</h5>
+            <span className="text-[10px] text-valorant-gray">{t.discounted}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.bonusStore.offers.map((offer, idx) => {
-            const priceInfo = {
-              basePrice: offer.basePrice,
-              discountedPrice: offer.discountedPrice,
-              discountPercent: offer.discountPercent
-            };
-            return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, null, priceInfo)}</div>;
-          })}
+              const priceInfo = {
+                basePrice: offer.basePrice,
+                discountedPrice: offer.discountedPrice,
+                discountPercent: offer.discountPercent
+              };
+              return <div key={idx} className="min-h-0">{renderCard(offer, offer.metadata?.displayName, null, priceInfo)}</div>;
+            })}
           </div>
         </div>
       );
@@ -158,7 +292,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       sections.push(
         <div key="accessoryStore" className="mt-3 p-4 bg-valorant-darker/60 rounded-lg border border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> Accessory Store</h5>
+            <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-valorant-gold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-valorant-red" /> {t.accessoryStoreTitle}</h5>
             <span className="text-[10px] text-valorant-gray">KC</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -222,17 +356,17 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             )}
           </div>
 
-         
+
         </section>
 
         <section className="lg:col-span-7">
           <div className="glass-panel rounded-xl p-5 border border-white/5 min-h-[650px]">
             {!storefront ? (
               <div className="h-full flex items-center justify-center text-center text-valorant-gray">
-                    <div>
-                      <Sparkles className="w-12 h-12 mx-auto mb-3 text-valorant-red/50" />
-                      <p>{t.waitingPasteUrl}</p>
-                    </div>
+                <div>
+                  <Sparkles className="w-12 h-12 mx-auto mb-3 text-valorant-red/50" />
+                  <p>{t.waitingPasteUrl}</p>
+                </div>
               </div>
             ) : renderStorefront()}
           </div>

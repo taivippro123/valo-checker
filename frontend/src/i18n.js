@@ -77,8 +77,25 @@ const translations = {
       }
     ],
     footerText: 'VALOCHECK is an open-source project created for the Valorant community. We are not associated with Riot Games.',
-    githubText: 'Source on GitHub'
+    githubText: 'Source on GitHub',
+    itemTypeWeapon: 'Weapon',
+    itemTypeBuddies: 'Buddy',
+    itemTypeSpray: 'Spray',
+    itemTypeFlex: 'Flex',
+    itemTypePlayerCard: 'Player Card',
+    itemTypePlayerTitle: 'Player Title',
+    featuredBundleTitle: 'Featured Bundle',
+    featuredBundleItemCount: '{count} items',
+    featuredBundleFree: 'Free',
+    featuredBundleExpand: 'Show items',
+    featuredBundleCollapse: 'Hide items',
+    dailySkinsTitle: 'Daily 4 Skins',
+    dailyShop: 'Daily Shop',
+    nightMarketTitle: 'Night Market',
+    discounted: 'Discounted',
+    accessoryStoreTitle: 'Accessory Store',
   },
+
   vn: {
     addAccount: 'Thêm tài khoản Riot',
     editAccount: 'Chỉnh sửa tài khoản Riot',
@@ -157,8 +174,24 @@ const translations = {
       }
     ],
     footerText: 'VALOCHECK là một dự án mã nguồn mở phục vụ cộng đồng Valorant. Chúng tôi không liên kết với Riot Games.',
-    githubText: 'Xem mã nguồn trên GitHub'
-  }
-};
+    githubText: 'Xem mã nguồn trên GitHub',
+    itemTypeWeapon: 'Vũ khí',
+    itemTypeBuddies: 'Phụ kiện',
+    itemTypeSpray: 'Hình phun sơn',
+    itemTypeFlex: 'Flex',
+    itemTypePlayerCard: 'Thẻ người chơi',
+    itemTypePlayerTitle: 'Danh hiệu',
+    featuredBundleTitle: 'Bundle nổi bật',
+    featuredBundleItemCount: '{count} vật phẩm',
+    featuredBundleFree: 'Miễn phí',
+    featuredBundleExpand: 'Xem vật phẩm',
+    featuredBundleCollapse: 'Ẩn vật phẩm',
+    dailySkinsTitle: '4 vũ khí hôm nay',
+    dailyShop: 'Cửa hàng hôm nay',
+    nightMarketTitle: 'Chợ đêm',
+    discounted: 'Giảm giá',
+    accessoryStoreTitle: 'Cửa hàng phụ kiện',
+  },
 
+};
 export default translations;
