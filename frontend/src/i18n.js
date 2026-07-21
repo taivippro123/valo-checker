@@ -94,6 +94,14 @@ const translations = {
     nightMarketTitle: 'Night Market',
     discounted: 'Discounted',
     accessoryStoreTitle: 'Accessory Store',
+    tabViewStore: 'View Store',
+    tabViewInventory: 'View Inventory',
+    inventoryUnavailable: 'Inventory data is unavailable for this account.',
+    storeUnavailable: 'Store data is unavailable for this account.',
+    loadoutWeaponsTitle: 'Equipped Weapons',
+    loadoutSpraysTitle: 'Equipped Sprays',
+    loadoutEmptyWeapons: 'No weapon skins found in loadout.',
+    loadoutEmptySprays: 'No sprays found in loadout.',
   },
 
   vn: {
@@ -191,6 +199,14 @@ const translations = {
     nightMarketTitle: 'Chợ đêm',
     discounted: 'Giảm giá',
     accessoryStoreTitle: 'Cửa hàng phụ kiện',
+    tabViewStore: 'Xem cửa hàng',
+    tabViewInventory: 'Xem kho đồ',
+    inventoryUnavailable: 'Không thể tải dữ liệu kho đồ cho tài khoản này.',
+    storeUnavailable: 'Không thể tải dữ liệu cửa hàng cho tài khoản này.',
+    loadoutWeaponsTitle: 'Vũ khí đang trang bị',
+    loadoutSpraysTitle: 'Spray đang trang bị',
+    loadoutEmptyWeapons: 'Không tìm thấy skin vũ khí trong loadout.',
+    loadoutEmptySprays: 'Không tìm thấy spray trong loadout.',
   },
 
 };
