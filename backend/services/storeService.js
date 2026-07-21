@@ -68,6 +68,222 @@ const itemTypeToEndpoint = {
   '03a572de-4234-31ed-d344-ababa488f981': 'playertitles'
 };
 
+const FEATURED_ITEM_ENDPOINTS = [
+  'weapons/skinlevels',
+  'buddies/levels',
+  'sprays',
+  'playercards',
+  'playertitles',
+  'flex'
+];
+
+export const mapResolvedViaToItemCategory = (resolvedVia) => {
+  if (!resolvedVia) return null;
+  if (resolvedVia.startsWith('weapons/')) return 'weapon';
+  if (resolvedVia === 'buddies/levels') return 'buddies';
+  if (resolvedVia === 'sprays') return 'spray';
+  if (resolvedVia === 'playercards') return 'playercard';
+  if (resolvedVia === 'playertitles') return 'playertitle';
+  if (resolvedVia === 'flex') return 'flex';
+  return null;
+};
+
+export const extractFeaturedBundleEntries = (featuredBundle) => {
+  const fromTiles = (featuredBundle?.FeaturedTileEntries || [])
+    .map((entry) => entry?.Entry?.Bundle)
+    .filter(Boolean);
+
+  if (fromTiles.length) {
+    return fromTiles;
+  }
+
+  if (featuredBundle?.Bundles?.length) {
+    return featuredBundle.Bundles;
+  }
+
+  if (featuredBundle?.Bundle) {
+    return [featuredBundle.Bundle];
+  }
+
+  return [];
+};
+
+export const resolveBundleMetaByDataAssetId = async (dataAssetId, logFn = null) => {
+  const log = (message) => {
+    console.log(message);
+    logFn?.(message);
+  };
+
+  if (!dataAssetId) {
+    log('[FeaturedBundle] Step 1: skip bundle meta — missing DataAssetID');
+    return null;
+  }
+
+  const url = `https://valorant-api.com/v1/bundles/${dataAssetId}`;
+  log(`[FeaturedBundle] Step 1: GET ${url}`);
+
+  try {
+    const response = await axios.get(url);
+    const bundleData = response.data?.data;
+    if (!bundleData) {
+      log(`[FeaturedBundle] Step 1: empty bundle data for ${dataAssetId}`);
+      return null;
+    }
+
+    log(`[FeaturedBundle] Step 1: resolved bundle "${bundleData.displayName}"`);
+    return {
+      displayName: bundleData.displayName || null,
+      displayIcon: bundleData.displayIcon || bundleData.displayIcon2 || null,
+      verticalPromoImage: bundleData.verticalPromoImage || null,
+      extraImage: bundleData.extraImage || null
+    };
+  } catch (error) {
+    log(`[FeaturedBundle] Step 1: failed bundle lookup ${dataAssetId} — ${error.message}`);
+    return null;
+  }
+};
+
+export const resolveFeaturedBundleItem = async (itemId, itemTypeId = null, logFn = null) => {
+  const log = (message) => {
+    console.log(message);
+    logFn?.(message);
+  };
+
+  if (!itemId) {
+    return {
+      displayName: 'Unknown Item',
+      displayIcon: null,
+      image: null,
+      resolvedVia: null,
+      itemTypeId: itemTypeId || null
+    };
+  }
+
+  const endpoints = [];
+  const typedEndpoint = itemTypeId ? itemTypeToEndpoint[itemTypeId] : null;
+  if (typedEndpoint) {
+    endpoints.push(typedEndpoint);
+    if (typedEndpoint === 'weapons/skinlevels') {
+      endpoints.push('weapons/skins');
+    }
+    if (typedEndpoint === 'playertitles') {
+      endpoints.push('flex');
+    }
+  }
+
+  FEATURED_ITEM_ENDPOINTS.forEach((endpoint) => {
+    if (!endpoints.includes(endpoint)) {
+      endpoints.push(endpoint);
+    }
+  });
+
+  log(`[FeaturedBundle] Step 2: resolve item ${itemId}${itemTypeId ? ` (ItemTypeID=${itemTypeId})` : ''}`);
+
+  for (const endpoint of endpoints) {
+    const url = `https://valorant-api.com/v1/${endpoint}/${itemId}`;
+    log(`[FeaturedBundle] Step 2: try GET ${url}`);
+
+    try {
+      const response = await axios.get(url);
+      const data = response.data?.data;
+      if (!data) {
+        log(`[FeaturedBundle] Step 2: empty response from ${endpoint}`);
+        continue;
+      }
+
+      const displayName = data.displayName || data.name || 'Unknown Item';
+      log(`[FeaturedBundle] Step 2: hit ${endpoint} -> "${displayName}"`);
+
+      return {
+        displayName,
+        displayIcon: data.displayIcon || data.displayIcon2 || data.smallIcon || null,
+        image: data.fullRender || data.displayIcon || data.smallIcon || null,
+        resolvedVia: endpoint,
+        itemCategory: mapResolvedViaToItemCategory(endpoint),
+        itemTypeId: itemTypeId || null
+      };
+    } catch (error) {
+      log(`[FeaturedBundle] Step 2: miss ${endpoint} (${error.response?.status || error.message})`);
+    }
+  }
+
+  log(`[FeaturedBundle] Step 2: unresolved item ${itemId}`);
+  return {
+    displayName: 'Unknown Item',
+    displayIcon: null,
+    image: null,
+    resolvedVia: null,
+    itemCategory: null,
+    itemTypeId: itemTypeId || null
+  };
+};
+
+const mapFeaturedBundleItem = (item) => {
+  const offerItem = item?.Item || null;
+  if (!offerItem?.ItemID) {
+    return null;
+  }
+
+  return {
+    itemId: offerItem.ItemID,
+    itemTypeId: offerItem.ItemTypeID || null,
+    amount: offerItem.Amount ?? 1,
+    basePrice: item.BasePrice ?? null,
+    discountedPrice: item.DiscountedPrice ?? null,
+    discountPercent: item.DiscountPercent ?? null,
+    currencyId: item.CurrencyID || null
+  };
+};
+
+export const buildFeaturedBundles = async (featuredBundle, { logFn = null } = {}) => {
+  const log = (message) => {
+    console.log(message);
+    logFn?.(message);
+  };
+
+  const entries = extractFeaturedBundleEntries(featuredBundle);
+  log(`[FeaturedBundle] Found ${entries.length} bundle entr${entries.length === 1 ? 'y' : 'ies'} in FeaturedTileEntries/Bundles`);
+
+  const bundles = [];
+
+  for (const [index, bundleEntry] of entries.entries()) {
+    const bundleLabel = `[Bundle ${index + 1}/${entries.length}]`;
+    log(`${bundleLabel} DataAssetID=${bundleEntry.DataAssetID || 'n/a'}, items=${bundleEntry.Items?.length || 0}`);
+
+    const bundleMeta = await resolveBundleMetaByDataAssetId(bundleEntry.DataAssetID, logFn);
+    const items = [];
+
+    for (const [itemIndex, item] of (bundleEntry.Items || []).entries()) {
+      const mapped = mapFeaturedBundleItem(item);
+      if (!mapped) {
+        log(`${bundleLabel} Item ${itemIndex + 1}: skipped (missing ItemID)`);
+        continue;
+      }
+
+      log(`${bundleLabel} Item ${itemIndex + 1}: ItemID=${mapped.itemId}, BasePrice=${mapped.basePrice}, DiscountedPrice=${mapped.discountedPrice}`);
+      const metadata = await resolveFeaturedBundleItem(mapped.itemId, mapped.itemTypeId, logFn);
+      items.push({
+        ...mapped,
+        metadata
+      });
+    }
+
+    bundles.push({
+      bundleId: bundleEntry.ID || null,
+      dataAssetId: bundleEntry.DataAssetID || null,
+      durationRemainingInSeconds: bundleEntry.DurationRemainingInSeconds ?? null,
+      totalBaseCost: bundleEntry.TotalBaseCost || null,
+      totalDiscountedCost: bundleEntry.TotalDiscountedCost || null,
+      totalDiscountPercent: bundleEntry.TotalDiscountPercent ?? null,
+      wholesaleOnly: bundleEntry.WholesaleOnly ?? null,
+      bundleMeta,
+      items
+    });
+  }
+
+  return bundles;
+};
+
 /**
  * Fetch and build the skins cache from valorant-api.com
  */
@@ -232,6 +448,57 @@ const extractPrice = (costs = {}, preferredCurrency = 'VP') => {
   return match ? { currencyId: match[0], amount: match[1] } : null;
 };
 
+export const fetchRawStorefront = async (shard, puuid, authDetails) => {
+  const { accessToken, entitlementToken, clientVersion, authToken } = authDetails;
+  const clientPlatform = 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9';
+  const candidateShards = getStorefrontCandidateShards(shard);
+  const attempts = [];
+
+  for (const activeShard of candidateShards) {
+    const url = `https://pd.${activeShard}.a.pvp.net/store/v3/storefront/${puuid}`;
+
+    try {
+      const response = await axios.post(url, {}, {
+        headers: {
+          'Authorization': `Bearer ${authToken || accessToken}`,
+          'X-Riot-Entitlements-JWT': entitlementToken,
+          'X-Riot-ClientPlatform': clientPlatform,
+          'X-Riot-ClientVersion': clientVersion,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return {
+        shard: activeShard,
+        url,
+        status: response.status,
+        data: response.data
+      };
+    } catch (error) {
+      attempts.push({
+        shard: activeShard,
+        url,
+        status: error.response?.status || null,
+        data: error.response?.data ?? null,
+        message: error.message
+      });
+
+      if (error.response?.status === 404) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  const lastAttempt = attempts.at(-1);
+  const err = new Error(lastAttempt?.data?.message || lastAttempt?.message || 'Storefront unavailable on all shards.');
+  err.attempts = attempts;
+  err.status = lastAttempt?.status || 502;
+  err.data = lastAttempt?.data ?? null;
+  throw err;
+};
+
 export const fetchAccountStore = async (shard, puuid, authDetails) => {
   const { accessToken, entitlementToken, clientVersion, authToken } = authDetails;
   const clientPlatform = 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9';
@@ -264,52 +531,14 @@ export const fetchAccountStore = async (shard, puuid, authDetails) => {
       const accessoryStore = storeData.AccessoryStore || null;
 
       const result = {
-        featuredBundle: null,
+        featuredBundles: [],
         skinsPanel: null,
         bonusStore: null,
         accessoryStore: null
       };
 
-      if (featuredBundle?.Bundle) {
-        const bundleItems = [];
-        for (const item of featuredBundle.Bundle.Items || []) {
-          const offerItem = item?.Item || null;
-          if (!offerItem) continue;
-          const itemId = offerItem.ItemID;
-          const itemTypeId = offerItem.ItemTypeID;
-          const meta = await resolveMetaByItem(itemId, itemTypeId);
-          bundleItems.push({
-            itemId,
-            itemTypeId,
-            basePrice: item.BasePrice,
-            discountedPrice: item.DiscountedPrice,
-            discountPercent: item.DiscountPercent,
-            metadata: meta
-          });
-        }
-
-        result.featuredBundle = {
-          durationRemainingInSeconds: featuredBundle.Bundle.DurationRemainingInSeconds || null,
-          items: bundleItems,
-          bundleMeta: null
-        };
-
-        if (featuredBundle.Bundle.DataAssetID) {
-          try {
-            const bundleResp = await axios.get(`https://valorant-api.com/v1/bundles/${featuredBundle.Bundle.DataAssetID}`);
-            const bundleData = bundleResp.data?.data;
-            if (bundleData) {
-              result.featuredBundle.bundleMeta = {
-                displayName: bundleData.displayName || null,
-                displayIcon: bundleData.displayIcon || null,
-                verticalPromoImage: bundleData.verticalPromoImage || null,
-                extraImage: bundleData.extraImage || null
-              };
-            }
-          } catch (bundleErr) {
-            console.warn('[StoreService] Failed to resolve bundle metadata:', bundleErr.message);
-          }
-        }
+      if (featuredBundle) {
+        result.featuredBundles = await buildFeaturedBundles(featuredBundle);
       }
 
       if (skinsPanel) {
@@ -401,7 +630,15 @@ export const fetchAccountStore = async (shard, puuid, authDetails) => {
       const flattened = [];
       if (result.skinsPanel?.offers) flattened.push(...result.skinsPanel.offers.map(o => ({ uuid: o.itemId, displayName: o.metadata?.displayName || '', displayIcon: o.metadata?.displayIcon || null })));
       if (result.bonusStore?.offers) flattened.push(...result.bonusStore.offers.map(o => ({ uuid: o.itemId, displayName: o.metadata?.displayName || '', displayIcon: o.metadata?.displayIcon || null })));
-      if (result.featuredBundle?.items) flattened.push(...result.featuredBundle.items.map(o => ({ uuid: o.itemId, displayName: o.metadata?.displayName || '', displayIcon: o.metadata?.displayIcon || null })));
+      if (result.featuredBundles?.length) {
+        result.featuredBundles.forEach((bundle) => {
+          flattened.push(...(bundle.items || []).map((item) => ({
+            uuid: item.itemId,
+            displayName: item.metadata?.displayName || '',
+            displayIcon: item.metadata?.displayIcon || null
+          })));
+        });
+      }
       if (result.accessoryStore?.offers) flattened.push(...result.accessoryStore.offers.map(o => ({ uuid: o.itemId, displayName: o.metadata?.displayName || '', displayIcon: o.metadata?.displayIcon || null })));
 
       return { storefront: result, offers: flattened, shard: activeShard };
@@ -426,5 +663,5 @@ export const fetchAccountStore = async (shard, puuid, authDetails) => {
 
   const fallbackMessage = lastError.at(-1)?.message || 'Unknown storefront error';
   console.warn(`[StoreService] Storefront unavailable for PUUID ${puuid} after trying shards ${candidateShards.join(', ')}. Returning empty offers.`);
-  return { storefront: { featuredBundle: null, skinsPanel: null, bonusStore: null, accessoryStore: null }, offers: [], shard: shard || 'ap', warning: fallbackMessage };
+  return { storefront: { featuredBundles: [], skinsPanel: null, bonusStore: null, accessoryStore: null }, offers: [], shard: shard || 'ap', warning: fallbackMessage };
 };
