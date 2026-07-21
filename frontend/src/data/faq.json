@@ -1,0 +1,18 @@
+[
+  {
+    "question": "Lấy link redirect Riot Games như thế nào?",
+    "answer": "Mở trang đăng nhập Riot, đăng nhập, sau khi chuyển về trang play valorant hãy copy toàn bộ URL trình duyệt (bao gồm phần #fragment chứa access_token và id_token). Dán vào ô ở trang này để check cửa hàng."
+  },
+  {
+    "question": "Quét skin ở đây có bị khóa tài khoản không?",
+    "answer": "Chỉ đọc dữ liệu cửa hàng công khai bằng token tạm thời trong redirect URL. Ứng dụng không thay đổi mật khẩu hoặc gửi yêu cầu thay mặt bạn. Tuy nhiên hãy tự chịu trách nhiệm khi dùng token từ trình duyệt của mình."
+  },
+  {
+    "question": "Check skin ở đây có bị lộ thông tin tài khoản không?",
+    "answer": "Chúng tôi chỉ sử dụng token tạm thời để lấy danh sách cửa hàng; không lưu mật khẩu. Tránh chia sẻ URL redirect công khai nếu bạn không muốn rò rỉ thông tin phiên."
+  },
+  {
+    "question": "Tại sao cửa hàng súng của tôi hiển thị sai hoặc không load được?",
+    "answer": "Có thể token đã hết hạn hoặc vùng (region) không đúng. Hãy thử đăng xuất, đăng nhập lại trên Riot và dán lại redirect URL mới."
+  }
+]

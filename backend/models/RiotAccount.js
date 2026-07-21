@@ -50,10 +50,6 @@ const riotAccountSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
-  ntfyTopic: {
-    type: String,
-    default: ''
-  },
   lastChecked: {
     type: Date,
     default: null

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LogOut, Terminal, Globe, ShieldCheck, Activity, ExternalLink, Sparkles, RefreshCw } from 'lucide-react';
 import translations from '../i18n';
+import FAQ from './FAQ';
+import Footer from './Footer';
 
 const Dashboard = ({ onLogout, API_URL, username }) => {
   const [redirectUrl, setRedirectUrl] = useState('');
@@ -34,6 +36,17 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!redirectUrl.trim()) {
+      setError(t.redirectUrlRequired);
+      return;
+    }
+
+    if (!redirectUrl.trim().startsWith('https://playvalorant.com/')) {
+      setError(t.redirectUrlPrefixInvalid);
+      return;
+    }
+
     setLoading(true);
     setStorefront(null);
 
@@ -45,7 +58,13 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       // clear the input after successful check
       setRedirectUrl('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch store.');
+      const serverMessage = err.response?.data?.message;
+      const mappedMessage = serverMessage === 'Please provide a Riot redirect URL containing an access_token.'
+        ? t.redirectUrlAccessTokenRequired
+        : serverMessage === 'The provided access token is invalid.'
+          ? t.invalidAccessToken
+          : serverMessage || t.storeCheckFailed;
+      setError(mappedMessage);
     } finally {
       setLoading(false);
     }
@@ -161,7 +180,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
               <Terminal className="w-5 h-5 text-valorant-red" />
             </div>
             <div>
-              <h1 className="text-md font-bold tracking-widest uppercase text-valorant-gold">VALORANT CHECKER</h1>
+              <h1 className="text-md font-bold tracking-widest uppercase text-valorant-red">{t.brand || 'VALOCHECK'}</h1>
               <p className="text-[10px] text-valorant-gray font-mono mt-0.5 flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2"><span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${serverHealth.ok ? 'bg-emerald-400' : 'bg-red-400'}`}></span><span className={`relative inline-flex rounded-full h-2 w-2 ${serverHealth.ok ? 'bg-emerald-500' : 'bg-red-500'}`}></span></span>
                 System: {serverHealth.message}
@@ -212,6 +231,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
           </div>
         </section>
       </main>
+      <FAQ language={language} />
+      <Footer language={language} />
     </div>
   );
 };

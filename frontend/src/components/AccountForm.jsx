@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   X, ShieldAlert, KeyRound, User, Tag, HelpCircle, 
-  Sparkles, RefreshCw, CheckCircle2, ExternalLink
+  Sparkles, RefreshCw, ExternalLink
 } from 'lucide-react';
 import translations from '../i18n';
 
@@ -12,7 +12,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
   const [alias, setAlias] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [ntfyTopic, setNtfyTopic] = useState('');
   const [redirectUrl, setRedirectUrl] = useState('');
   const [cookieString, setCookieString] = useState('');
   const [error, setError] = useState('');
@@ -24,7 +23,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
       setAlias(accountToEdit.alias || '');
       setUsername(accountToEdit.username || '');
       setPassword('');
-      setNtfyTopic(accountToEdit.ntfyTopic || '');
       setRedirectUrl('');
       setCookieString('');
     } else {
@@ -32,7 +30,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
       setAlias('');
       setUsername('');
       setPassword('');
-      setNtfyTopic('');
       setRedirectUrl('');
       setCookieString('');
     }
@@ -87,7 +84,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
         // Build payload and delegate actual API request to parent via onSave
         const data = {
           alias: alias.trim(),
-          ntfyTopic: ntfyTopic.trim(),
           authMode
         };
 
@@ -170,25 +166,6 @@ const AccountForm = ({ isOpen, onClose, onSave, accountToEdit, API_URL, language
               disabled={loading}
               className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/40 focus:outline-none focus:border-valorant-red transition-colors disabled:opacity-50"
             />
-          </div>
-
-          {/* Common Fields: ntfyTopic */}
-          <div className="grid grid-cols-1 gap-4">
-            {/* ntfyTopic Selection */}
-            <div>
-              <label className="text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-1.5 flex items-center justify-between">
-                <span className="flex items-center gap-1.5"><HelpCircle className="w-3.5 h-3.5" /> {t.ntfyTopic}</span>
-                <span className="text-[10px] text-valorant-gray normal-case font-normal">{t.optional}</span>
-              </label>
-              <input
-                type="text"
-                value={ntfyTopic}
-                onChange={(e) => setNtfyTopic(e.target.value)}
-                placeholder="e.g. val_notifications_main"
-                disabled={loading}
-                className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/40 focus:outline-none focus:border-valorant-red transition-colors disabled:opacity-50"
-              />
-            </div>
           </div>
 
           {/* Dynamic layout based on authMode */}

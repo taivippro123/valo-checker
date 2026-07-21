@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { 
-  Globe, Bell, Clock, Heart, Edit2, Trash2, 
+  Globe, Clock, Heart, Edit2, Trash2, 
   RotateCw, ShieldAlert, Sparkles, Check, ChevronDown, ChevronUp, AlertCircle
 } from 'lucide-react';
 import translations from '../i18n';
@@ -190,12 +190,6 @@ const AccountList = ({
               <div className="flex items-center gap-1.5">
                 <Heart className="w-4 h-4 text-valorant-red fill-valorant-red/15" />
                 <span>{account.wishlist?.length || 0} Skins on Wishlist</span>
-              </div>
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Bell className="w-4 h-4 text-blue-400" />
-                <span className="break-words whitespace-normal text-left" title={account.ntfyTopic || t.ntfyGlobal}>
-                  ntfy: {account.ntfyTopic || t.none}
-                </span>
               </div>
               <div className="flex items-center gap-1.5 sm:col-span-2 lg:col-span-2">
                 <Clock className="w-4 h-4" />

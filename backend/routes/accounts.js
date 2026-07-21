@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/', protect, async (req, res) => {
   try {
     const accounts = await RiotAccount.find({});
-    // Return with decrypted/plain alias, shard, puuid, ntfyTopic, lastChecked, wishlist, and masked credentials
+    // Return with decrypted/plain alias, shard, puuid, lastChecked, wishlist, and masked credentials
     const safeAccounts = accounts.map(acc => {
       let decryptedUser = '';
       if (acc.authMode === 'token') {
@@ -30,7 +30,6 @@ router.get('/', protect, async (req, res) => {
         shard: acc.shard,
         puuid: acc.puuid,
         wishlist: acc.wishlist,
-        ntfyTopic: acc.ntfyTopic,
         lastChecked: acc.lastChecked,
         authMode: acc.authMode,
         tokenExpiresAt: acc.tokenExpiresAt
@@ -44,7 +43,7 @@ router.get('/', protect, async (req, res) => {
 
 // Add new Riot Account (or link/verify via redirect URL token)
 router.post('/', protect, async (req, res) => {
-  const { authMode, redirectUrl, cookieString, username, password, alias, shard, ntfyTopic } = req.body;
+  const { authMode, redirectUrl, cookieString, username, password, alias, shard } = req.body;
 
   if (authMode === 'token') {
     if (!redirectUrl && !cookieString) {
@@ -127,7 +126,6 @@ router.post('/', protect, async (req, res) => {
         account.authMode = 'token';
         account.alias = alias || account.alias;
         account.shard = shard || account.shard;
-        account.ntfyTopic = ntfyTopic !== undefined ? ntfyTopic : account.ntfyTopic;
         await account.save();
       } else {
         console.log(`[AccountsAPI] Registering new token account: ${playerUsername}`);
@@ -135,7 +133,6 @@ router.post('/', protect, async (req, res) => {
           username: playerUsername,
           alias: alias || playerUsername,
           shard: shard || 'ap',
-          ntfyTopic: ntfyTopic || '',
           puuid,
           authMode: 'token',
           accessToken,
@@ -152,7 +149,6 @@ router.post('/', protect, async (req, res) => {
         shard: account.shard,
         puuid: account.puuid,
         wishlist: account.wishlist,
-        ntfyTopic: account.ntfyTopic,
         lastChecked: account.lastChecked,
         authMode: account.authMode,
         tokenExpiresAt: account.tokenExpiresAt
@@ -195,8 +191,7 @@ router.post('/', protect, async (req, res) => {
       alias,
       shard: shard || 'ap',
       puuid,
-      authMode: 'credentials',
-      ntfyTopic: ntfyTopic || ''
+      authMode: 'credentials'
     });
 
     res.status(201).json({
@@ -206,7 +201,6 @@ router.post('/', protect, async (req, res) => {
       shard: newAccount.shard,
       puuid: newAccount.puuid,
       wishlist: newAccount.wishlist,
-      ntfyTopic: newAccount.ntfyTopic,
       lastChecked: newAccount.lastChecked,
       authMode: newAccount.authMode
     });
@@ -217,7 +211,7 @@ router.post('/', protect, async (req, res) => {
 
 // Update Riot Account
 router.put('/:id', protect, async (req, res) => {
-  const { alias, shard, ntfyTopic, wishlist, username, password, authMode, redirectUrl, cookieString } = req.body;
+  const { alias, shard, wishlist, username, password, authMode, redirectUrl, cookieString } = req.body;
 
   try {
     const account = await RiotAccount.findById(req.params.id);
@@ -227,7 +221,6 @@ router.put('/:id', protect, async (req, res) => {
 
     account.alias = alias !== undefined ? alias : account.alias;
     account.shard = shard !== undefined ? shard : account.shard;
-    account.ntfyTopic = ntfyTopic !== undefined ? ntfyTopic : account.ntfyTopic;
     account.wishlist = wishlist !== undefined ? wishlist : account.wishlist;
     account.cookieString = cookieString !== undefined ? cookieString : account.cookieString;
 
@@ -350,7 +343,6 @@ router.put('/:id', protect, async (req, res) => {
       shard: updatedAccount.shard,
       puuid: updatedAccount.puuid,
       wishlist: updatedAccount.wishlist,
-      ntfyTopic: updatedAccount.ntfyTopic,
       lastChecked: updatedAccount.lastChecked,
       authMode: updatedAccount.authMode,
       tokenExpiresAt: updatedAccount.tokenExpiresAt
