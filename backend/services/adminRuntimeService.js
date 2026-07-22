@@ -7,8 +7,8 @@ import { getClientVersion, refreshTokenWithCookie } from './riotAuthService.js';
 import { sendNtfyNotification } from './ntfyService.js';
 
 const REAUTH_INTERVAL_MS = 50 * 60 * 1000;
-const SHOP_CRON_EXPRESSION = '5 5 * * *';
-const SHOP_CRON_TIMEZONE = 'UTC';
+const SHOP_CRON_EXPRESSION = '1 7 * * *';
+const SHOP_CRON_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 let configCache = null;
 let jobsStarted = false;
@@ -157,6 +157,15 @@ const notifyNtfy = async (message, title = 'VALO CHECK') => {
   }
 };
 
+const getHoChiMinhDayKey = (dateValue = new Date()) => {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: SHOP_CRON_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(dateValue);
+};
+
 const performReauth = async ({ source = 'cron' } = {}) => {
   const config = await getAdminConfig();
   if (!config?.riotCookies) {
@@ -213,6 +222,14 @@ const performShopCheck = async ({ source = 'cron' } = {}) => {
   const config = await getAdminConfig();
   if (!config?.ntfyTopicUrl) {
     return { ok: false, reason: 'NO_NTFY_TOPIC' };
+  }
+
+  if (source === 'cron' && config.lastShopCheckAt) {
+    const lastCheckedDay = getHoChiMinhDayKey(config.lastShopCheckAt);
+    const today = getHoChiMinhDayKey(new Date());
+    if (lastCheckedDay === today) {
+      return { ok: true, reason: 'ALREADY_CHECKED_TODAY' };
+    }
   }
 
   const authDetails = await getRuntimeAuthDetails();
@@ -289,8 +306,6 @@ export const startAdminAutomation = async () => {
   }, {
     timezone: SHOP_CRON_TIMEZONE
   });
-
-  await performShopCheck({ source: 'startup' });
 };
 
 export const triggerReauthNow = async () => performReauth({ source: 'manual' });
