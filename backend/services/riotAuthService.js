@@ -234,6 +234,10 @@ export const refreshTokenWithCookie = async (cookieString) => {
       throw new Error('COOKIE_EXPIRED');
     }
 
+    if (/authenticate\.riotgames\.com\/login/i.test(redirectUrl)) {
+      throw new Error('COOKIE_EXPIRED');
+    }
+
     const hash = redirectUrl.split('#')[1] || '';
     const params = new URLSearchParams(hash);
     const accessToken = params.get('access_token');
@@ -258,7 +262,8 @@ export const refreshTokenWithCookie = async (cookieString) => {
       entitlementToken,
       idToken,
       puuid,
-      expiresIn
+      expiresIn,
+      setCookies: response.headers['set-cookie'] || []
     };
   } catch (error) {
     if (error.response?.status === 401 || error.response?.status === 403) {
