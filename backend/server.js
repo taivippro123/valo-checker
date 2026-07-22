@@ -10,6 +10,7 @@ import adminRoutes from './routes/admin.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './config/swagger.js';
 import { loadSkinsCache } from './services/storeService.js';
+import { startAdminAutomation } from './services/adminRuntimeService.js';
 
 // Load environment variables
 dotenv.config();
@@ -67,6 +68,7 @@ const PORT = process.env.PORT || 4000;
 const startServer = async () => {
   try {
     await loadSkinsCache(true);
+    await startAdminAutomation();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

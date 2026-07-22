@@ -1,6 +1,7 @@
 import express from 'express';
 import Log from '../models/Log.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { getAdminConfig, getAutomationStatus, getWishlistItems, removeWishlistItem, replaceWishlistItems, triggerReauthNow, triggerShopCheckNow, updateAdminConfig } from '../services/adminRuntimeService.js';
 
 const router = express.Router();
 
@@ -42,6 +43,115 @@ router.delete('/logs', protect, requireAdmin, async (req, res) => {
   try {
     await Log.deleteMany({});
     res.json({ message: 'Logs cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/config', protect, requireAdmin, async (req, res) => {
+  try {
+    const config = await getAdminConfig();
+    const status = await getAutomationStatus();
+    res.json({
+      config: {
+        redirectUrl: config?.redirectUrl || '',
+        riotCookies: config?.riotCookies || '',
+        ntfyTopicUrl: config?.ntfyTopicUrl || '',
+        hasAccessToken: Boolean(config?.accessToken),
+        hasEntitlementToken: Boolean(config?.entitlementToken),
+        tokenExpiresAt: config?.tokenExpiresAt || null,
+        lastReauthAt: config?.lastReauthAt || null,
+        lastShopCheckAt: config?.lastShopCheckAt || null,
+        lastReauthStatus: config?.lastReauthStatus || '',
+        lastReauthError: config?.lastReauthError || '',
+        lastShopCheckStatus: config?.lastShopCheckStatus || '',
+        lastShopCheckError: config?.lastShopCheckError || '',
+        jobsStarted: status.jobsStarted,
+        nextReauthInMinutes: status.nextReauthInMinutes,
+        dailyShopCron: status.dailyShopCron
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/config', protect, requireAdmin, async (req, res) => {
+  try {
+    const { redirectUrl = '', riotCookies = '', ntfyTopicUrl = '' } = req.body || {};
+    const config = await updateAdminConfig({ redirectUrl, riotCookies, ntfyTopicUrl });
+    res.json({
+      message: 'Config saved',
+      config: {
+        redirectUrl: config.redirectUrl || '',
+        riotCookies: config.riotCookies || '',
+        ntfyTopicUrl: config.ntfyTopicUrl || '',
+        hasAccessToken: Boolean(config.accessToken),
+        hasEntitlementToken: Boolean(config.entitlementToken),
+        tokenExpiresAt: config.tokenExpiresAt || null,
+        lastReauthAt: config.lastReauthAt || null,
+        lastShopCheckAt: config.lastShopCheckAt || null,
+        lastReauthStatus: config.lastReauthStatus || '',
+        lastReauthError: config.lastReauthError || '',
+        lastShopCheckStatus: config.lastShopCheckStatus || '',
+        lastShopCheckError: config.lastShopCheckError || ''
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/automation/status', protect, requireAdmin, async (req, res) => {
+  try {
+    const status = await getAutomationStatus();
+    res.json({ status });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/automation/reauth-now', protect, requireAdmin, async (req, res) => {
+  try {
+    const result = await triggerReauthNow();
+    res.json({ message: result.ok ? 'Reauth complete' : 'Reauth failed', result });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/automation/shop-now', protect, requireAdmin, async (req, res) => {
+  try {
+    const result = await triggerShopCheckNow();
+    res.json({ message: result.ok ? 'Shop check complete' : 'Shop check failed', result });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/wishlist', protect, requireAdmin, async (req, res) => {
+  try {
+    const wishlist = await getWishlistItems();
+    res.json({ wishlist });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/wishlist', protect, requireAdmin, async (req, res) => {
+  try {
+    const { items = [] } = req.body || {};
+    const wishlist = await replaceWishlistItems(items);
+    res.json({ message: 'Wishlist saved', wishlist });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/wishlist/:skinUuid', protect, requireAdmin, async (req, res) => {
+  try {
+    await removeWishlistItem(req.params.skinUuid);
+    res.json({ message: 'Wishlist item removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
