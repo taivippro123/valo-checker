@@ -1,5 +1,11 @@
 # Valorant Store Checker
 
+## Demo
+
+![Demo](assets/demo.gif)
+
+---
+
 ## Vietnamese below
 ## 🇺🇸 English
 

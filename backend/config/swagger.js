@@ -476,6 +476,81 @@ const swaggerDocument = {
         }
       }
     },
+    '/api/store/test-headers': {
+      post: {
+        tags: ['Store'],
+        summary: 'Generate required Riot API headers',
+        description: 'Extracts the access token from a Riot Games redirect URL or parses the provided token directly, and returns the essential headers plus puuid and shard needed to directly request the official Valorant endpoints.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/StoreCheckRequest'
+              }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'Headers successfully generated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    'X-Riot-ClientPlatform': {
+                      type: 'string',
+                      example: 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9'
+                    },
+                    'X-Riot-ClientVersion': {
+                      type: 'string',
+                      example: 'release-08.11-shipping-21-2550186'
+                    },
+                    'X-Riot-Entitlements-JWT': {
+                      type: 'string',
+                      example: 'eyJraWQiOiJyc28tcHJvZC1...'
+                    },
+                    'Authorization': {
+                      type: 'string',
+                      example: 'Bearer eyJhbGciOiJIUzI1Ni...'
+                    },
+                    'puuid': {
+                      type: 'string',
+                      example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+                    },
+                    'shard': {
+                      type: 'string',
+                      example: 'ap'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          400: {
+            description: 'Missing or invalid Riot redirect URL, access token, or unable to resolve PUUID',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/ErrorResponse'
+                }
+              }
+            }
+          },
+          500: {
+            description: 'Failed to generate headers',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/ErrorResponse'
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/skins': {
       get: {
         tags: ['Skins'],

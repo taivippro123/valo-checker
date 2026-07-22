@@ -4,6 +4,7 @@ import { LogOut, Terminal, Globe, ShieldCheck, Activity, ExternalLink, Sparkles,
 import translations from '../i18n';
 import FAQ from './FAQ';
 import Footer from './Footer';
+import InventoryPanel from './InventoryPanel';
 
 const Dashboard = ({ onLogout, API_URL, username }) => {
   const [redirectUrl, setRedirectUrl] = useState('');
@@ -11,6 +12,8 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const [serverHealth, setServerHealth] = useState({ ok: false, message: 'Checking...' });
   const [language, setLanguage] = useState('en');
   const [storefront, setStorefront] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [activeTab, setActiveTab] = useState('store');
   const [error, setError] = useState('');
   const [riotId, setRiotId] = useState('');
   const [shard, setShard] = useState('');
@@ -50,11 +53,14 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
 
     setLoading(true);
     setStorefront(null);
+    setProfile(null);
+    setActiveTab('store');
     setExpandedBundles({});
 
     try {
       const res = await axios.post(`${API_URL}/api/store/check`, { redirectUrl });
       setStorefront(res.data.storefront || null);
+      setProfile(res.data.profile || null);
       setRiotId(res.data.riotId || '');
       setShard(res.data.shard || '');
       // clear the input after successful check
@@ -310,9 +316,12 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       <header className="glass-panel border-b border-white/5 px-6 py-4 shrink-0 relative z-20">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-valorant-red/10 rounded-xl flex items-center justify-center border border-valorant-red/20 shadow-[0_0_10px_rgba(255,70,85,0.15)]">
-              <Terminal className="w-5 h-5 text-valorant-red" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="VALOCHECK"
+              className="w-11 h-11 object-contain drop-shadow-[0_0_12px_rgba(255,70,85,0.55)] select-none"
+              draggable={false}
+            />
             <div>
               <h1 className="text-md font-bold tracking-widest uppercase text-valorant-red">{t.brand || 'VALOCHECK'}</h1>
               <p className="text-[10px] text-valorant-gray font-mono mt-0.5 flex items-center gap-1.5">
@@ -347,7 +356,7 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
             </form>
             {error && <div className="mt-3 text-sm text-valorant-red">{error}</div>}
             {riotId && <div className="mt-3 text-base font-semibold text-emerald-400">{t.riotIDLabel} {riotId} • {language === 'vn' ? 'Vùng' : 'Region'}: {shard || 'ap'}</div>}
-            {storefront && riotId && (
+            {(storefront || profile) && riotId && (
               <div className="mt-2 text-sm text-valorant-gray">
                 <span>{t.checkAnotherAccountPart1} </span>
                 <a href={t.signOutUrl} target="_blank" rel="noreferrer" className="text-valorant-gold underline hover:text-white">{t.checkAnotherAccountLink}</a>
@@ -361,14 +370,41 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
 
         <section className="lg:col-span-7">
           <div className="glass-panel rounded-xl p-5 border border-white/5 min-h-[650px]">
-            {!storefront ? (
+            {!storefront && !profile ? (
               <div className="h-full flex items-center justify-center text-center text-valorant-gray">
                 <div>
                   <Sparkles className="w-12 h-12 mx-auto mb-3 text-valorant-red/50" />
                   <p>{t.waitingPasteUrl}</p>
                 </div>
               </div>
-            ) : renderStorefront()}
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-5 border-b border-white/5 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('store')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'store' ? 'bg-valorant-red text-white' : 'text-valorant-gray hover:text-white hover:bg-white/5'}`}
+                  >
+                    {t.tabViewStore}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('inventory')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'inventory' ? 'bg-valorant-red text-white' : 'text-valorant-gray hover:text-white hover:bg-white/5'}`}
+                  >
+                    {t.tabViewInventory}
+                  </button>
+                </div>
+
+                {activeTab === 'store' ? (
+                  storefront ? renderStorefront() : (
+                    <div className="text-sm text-valorant-gray py-10 text-center">{t.storeUnavailable}</div>
+                  )
+                ) : (
+                  <InventoryPanel profile={profile} riotId={riotId} t={t} />
+                )}
+              </>
+            )}
           </div>
         </section>
       </main>
