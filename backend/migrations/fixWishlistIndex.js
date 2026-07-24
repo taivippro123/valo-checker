@@ -1,8 +1,13 @@
 import mongoose from 'mongoose';
 import WishlistItem from '../models/WishlistItem.js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Load .env from backend directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const fixWishlistIndex = async () => {
   try {
