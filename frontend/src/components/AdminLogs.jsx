@@ -10,6 +10,7 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState('');
   const [showAccountForm, setShowAccountForm] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState(null);
   const [accountForm, setAccountForm] = useState({
     name: '',
     redirectUrl: '',
@@ -83,18 +84,44 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     setAccountFormError('');
 
     try {
-      const res = await axios.post(`${API_URL}/api/admin/accounts`, accountForm, {
-        headers: authHeaders()
-      });
-      setAccountFormMessage('Tài khoản đã tạo thành công.');
+      if (editingAccountId) {
+        // Update existing account
+        const res = await axios.put(`${API_URL}/api/admin/accounts/${editingAccountId}`, accountForm, {
+          headers: authHeaders()
+        });
+        setAccountFormMessage('Tài khoản đã cập nhật thành công.');
+      } else {
+        // Create new account
+        const res = await axios.post(`${API_URL}/api/admin/accounts`, accountForm, {
+          headers: authHeaders()
+        });
+        setAccountFormMessage('Tài khoản đã tạo thành công.');
+      }
       setShowAccountForm(false);
+      setEditingAccountId(null);
       setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '' });
       await fetchAccounts();
     } catch (err) {
-      setAccountFormError(err.response?.data?.message || 'Không tạo được tài khoản.');
+      setAccountFormError(err.response?.data?.message || editingAccountId ? 'Không cập nhật được tài khoản.' : 'Không tạo được tài khoản.');
     } finally {
       setAccountFormSaving(false);
     }
+  };
+
+  const handleEditAccount = (account) => {
+    setEditingAccountId(account.id);
+    setAccountForm({
+      name: account.name || '',
+      redirectUrl: account.redirectUrl || '',
+      riotCookies: account.riotCookies || '',
+      ntfyTopicUrl: account.ntfyTopicUrl || ''
+    });
+    setShowAccountForm(true);
+  };
+
+  const handleViewWishlist = (accountId) => {
+    setSelectedAccountId(accountId);
+    setActiveTab('wishlist');
   };
 
   const handleDeleteAccount = async (accountId) => {
@@ -289,6 +316,9 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
 
       {showAccountForm && (
         <div className="glass-panel rounded-xl border border-white/5 p-4 space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">
+            {editingAccountId ? 'Chỉnh sửa tài khoản' : 'Tạo tài khoản mới'}
+          </h3>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Tên tài khoản</label>
             <input
@@ -333,11 +363,11 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
               disabled={accountFormSaving}
               className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
             >
-              <Check className="w-4 h-4" /> {accountFormSaving ? 'Saving...' : 'Lưu'}
+              <Check className="w-4 h-4" /> {accountFormSaving ? 'Saving...' : (editingAccountId ? 'Cập nhật' : 'Lưu')}
             </button>
             <button
               type="button"
-              onClick={() => { setShowAccountForm(false); setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '' }); }}
+              onClick={() => { setShowAccountForm(false); setEditingAccountId(null); setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '' }); }}
               className="px-4 py-2 rounded-lg border border-white/10 text-sm text-white hover:border-valorant-red/40"
             >
               Hủy
@@ -361,6 +391,9 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${account.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
                       {account.isActive ? 'Active' : 'Inactive'}
                     </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${account.lastReauthStatus === 'success' ? 'bg-emerald-500/20 text-emerald-400' : account.lastReauthStatus === 'failed' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      {account.lastReauthStatus || 'No reauth'}
+                    </span>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-valorant-gray">
                     <div>Access token: {account.hasAccessToken ? 'Ready' : 'Empty'}</div>
@@ -368,16 +401,15 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
                     <div>Token expires: {account.tokenExpiresAt ? new Date(account.tokenExpiresAt).toLocaleString() : '—'}</div>
                     <div>Last reauth: {account.lastReauthAt ? new Date(account.lastReauthAt).toLocaleString() : '—'}</div>
                     <div>Last shop check: {account.lastShopCheckAt ? new Date(account.lastShopCheckAt).toLocaleString() : '—'}</div>
-                    <div>Reauth status: {account.lastReauthStatus || '—'}</div>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedAccountId(account.id)}
+                    onClick={() => handleViewWishlist(account.id)}
                     className="px-3 py-2 rounded-lg border border-white/10 text-xs text-valorant-gold hover:text-white hover:border-valorant-red/40"
                   >
-                    Chọn
+                    Xem wishlist
                   </button>
                   <button
                     type="button"
@@ -399,6 +431,13 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
                     className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
                   >
                     Shop Check
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEditAccount(account)}
+                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
+                  >
+                    <Edit className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
@@ -594,22 +633,13 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
             Logs
           </button>
           {isSystemAdmin ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveTab('accounts')}
-                className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'accounts' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
-              >
-                Tài khoản
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('wishlist')}
-                className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'wishlist' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
-              >
-                Wishlist
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setActiveTab('accounts')}
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'accounts' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
+            >
+              Tài khoản
+            </button>
           ) : null}
         </div>
 
