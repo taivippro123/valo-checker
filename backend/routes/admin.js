@@ -1,7 +1,19 @@
 import express from 'express';
 import Log from '../models/Log.js';
 import { protect } from '../middleware/authMiddleware.js';
-import { getAdminConfig, getAutomationStatus, getWishlistItems, removeWishlistItem, replaceWishlistItems, triggerReauthNow, triggerShopCheckNow, updateAdminConfig } from '../services/adminRuntimeService.js';
+import { 
+  getAccounts, 
+  getAccountById, 
+  createAccount, 
+  updateAccount, 
+  deleteAccount, 
+  getAutomationStatus, 
+  getWishlistItems, 
+  removeWishlistItem, 
+  replaceWishlistItems, 
+  triggerReauthNow, 
+  triggerShopCheckNow 
+} from '../services/adminRuntimeService.js';
 
 const router = express.Router();
 
@@ -48,55 +60,67 @@ router.delete('/logs', protect, requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/config', protect, requireAdmin, async (req, res) => {
+router.get('/accounts', protect, requireAdmin, async (req, res) => {
   try {
-    const config = await getAdminConfig();
-    const status = await getAutomationStatus();
-    res.json({
-      config: {
-        redirectUrl: config?.redirectUrl || '',
-        riotCookies: config?.riotCookies || '',
-        ntfyTopicUrl: config?.ntfyTopicUrl || '',
-        hasAccessToken: Boolean(config?.accessToken),
-        hasEntitlementToken: Boolean(config?.entitlementToken),
-        tokenExpiresAt: config?.tokenExpiresAt || null,
-        lastReauthAt: config?.lastReauthAt || null,
-        lastShopCheckAt: config?.lastShopCheckAt || null,
-        lastReauthStatus: config?.lastReauthStatus || '',
-        lastReauthError: config?.lastReauthError || '',
-        lastShopCheckStatus: config?.lastShopCheckStatus || '',
-        lastShopCheckError: config?.lastShopCheckError || '',
-        jobsStarted: status.jobsStarted,
-        nextReauthInMinutes: status.nextReauthInMinutes,
-        dailyShopCron: status.dailyShopCron
-      }
-    });
+    const accounts = await getAccounts();
+    res.json({ accounts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.put('/config', protect, requireAdmin, async (req, res) => {
+router.get('/accounts/:id', protect, requireAdmin, async (req, res) => {
   try {
-    const { redirectUrl = '', riotCookies = '', ntfyTopicUrl = '' } = req.body || {};
-    const config = await updateAdminConfig({ redirectUrl, riotCookies, ntfyTopicUrl });
-    res.json({
-      message: 'Config saved',
-      config: {
-        redirectUrl: config.redirectUrl || '',
-        riotCookies: config.riotCookies || '',
-        ntfyTopicUrl: config.ntfyTopicUrl || '',
-        hasAccessToken: Boolean(config.accessToken),
-        hasEntitlementToken: Boolean(config.entitlementToken),
-        tokenExpiresAt: config.tokenExpiresAt || null,
-        lastReauthAt: config.lastReauthAt || null,
-        lastShopCheckAt: config.lastShopCheckAt || null,
-        lastReauthStatus: config.lastReauthStatus || '',
-        lastReauthError: config.lastReauthError || '',
-        lastShopCheckStatus: config.lastShopCheckStatus || '',
-        lastShopCheckError: config.lastShopCheckError || ''
-      }
-    });
+    const account = await getAccountById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    res.json({ account });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/accounts', protect, requireAdmin, async (req, res) => {
+  try {
+    const { name, redirectUrl = '', riotCookies = '', ntfyTopicUrl = '' } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Account name is required' });
+    }
+    const account = await createAccount({ name, redirectUrl, riotCookies, ntfyTopicUrl });
+    res.json({ message: 'Account created', account });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/accounts/:id', protect, requireAdmin, async (req, res) => {
+  try {
+    const { name, redirectUrl, riotCookies, ntfyTopicUrl, isActive } = req.body || {};
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (redirectUrl !== undefined) updates.redirectUrl = redirectUrl;
+    if (riotCookies !== undefined) updates.riotCookies = riotCookies;
+    if (ntfyTopicUrl !== undefined) updates.ntfyTopicUrl = ntfyTopicUrl;
+    if (isActive !== undefined) updates.isActive = isActive;
+    
+    const account = await updateAccount(req.params.id, updates);
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    res.json({ message: 'Account updated', account });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/accounts/:id', protect, requireAdmin, async (req, res) => {
+  try {
+    const result = await deleteAccount(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    res.json({ message: 'Account deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -113,7 +137,11 @@ router.get('/automation/status', protect, requireAdmin, async (req, res) => {
 
 router.post('/automation/reauth-now', protect, requireAdmin, async (req, res) => {
   try {
-    const result = await triggerReauthNow();
+    const { accountId } = req.body || {};
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+    const result = await triggerReauthNow(accountId);
     res.json({ message: result.ok ? 'Reauth complete' : 'Reauth failed', result });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -122,7 +150,11 @@ router.post('/automation/reauth-now', protect, requireAdmin, async (req, res) =>
 
 router.post('/automation/shop-now', protect, requireAdmin, async (req, res) => {
   try {
-    const result = await triggerShopCheckNow();
+    const { accountId } = req.body || {};
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+    const result = await triggerShopCheckNow(accountId);
     res.json({ message: result.ok ? 'Shop check complete' : 'Shop check failed', result });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -131,7 +163,11 @@ router.post('/automation/shop-now', protect, requireAdmin, async (req, res) => {
 
 router.get('/wishlist', protect, requireAdmin, async (req, res) => {
   try {
-    const wishlist = await getWishlistItems();
+    const { accountId } = req.query || {};
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+    const wishlist = await getWishlistItems(accountId);
     res.json({ wishlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -140,8 +176,11 @@ router.get('/wishlist', protect, requireAdmin, async (req, res) => {
 
 router.put('/wishlist', protect, requireAdmin, async (req, res) => {
   try {
-    const { items = [] } = req.body || {};
-    const wishlist = await replaceWishlistItems(items);
+    const { accountId, items = [] } = req.body || {};
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+    const wishlist = await replaceWishlistItems(accountId, items);
     res.json({ message: 'Wishlist saved', wishlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -150,7 +189,11 @@ router.put('/wishlist', protect, requireAdmin, async (req, res) => {
 
 router.delete('/wishlist/:skinUuid', protect, requireAdmin, async (req, res) => {
   try {
-    await removeWishlistItem(req.params.skinUuid);
+    const { accountId } = req.query || {};
+    if (!accountId) {
+      return res.status(400).json({ message: 'Account ID is required' });
+    }
+    await removeWishlistItem(accountId, req.params.skinUuid);
     res.json({ message: 'Wishlist item removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
