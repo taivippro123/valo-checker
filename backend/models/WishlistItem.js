@@ -1,12 +1,16 @@
 import mongoose from 'mongoose';
 
 const wishlistItemSchema = new mongoose.Schema({
+  accountId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Account',
+    required: true,
+    index: true
+  },
   skinUuid: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    index: true
+    trim: true
   },
   skinName: {
     type: String,
@@ -22,6 +26,9 @@ const wishlistItemSchema = new mongoose.Schema({
   timestamps: true,
   collection: 'wishlist'
 });
+
+// Compound unique index to allow same skin in multiple accounts' wishlists
+wishlistItemSchema.index({ accountId: 1, skinUuid: 1 }, { unique: true });
 
 const WishlistItem = mongoose.model('WishlistItem', wishlistItemSchema);
 
