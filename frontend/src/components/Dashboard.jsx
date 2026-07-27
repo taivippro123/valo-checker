@@ -10,6 +10,8 @@ import {
   Sparkles,
   RefreshCw,
   ChevronDown,
+  MessageSquare,
+  X,
 } from "lucide-react";
 import translations from "../i18n";
 import FAQ from "./FAQ";
@@ -31,6 +33,16 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const [riotId, setRiotId] = useState("");
   const [shard, setShard] = useState("");
   const [expandedBundles, setExpandedBundles] = useState({});
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    issue: '',
+    message: ''
+  });
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactError, setContactError] = useState('');
   const t = translations[language] || translations.vn;
 
   const checkHealth = async () => {
@@ -92,6 +104,38 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       setError(mappedMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setContactSubmitting(true);
+    setContactMessage('');
+    setContactError('');
+
+try {
+      const res = await axios.post(`${API_URL}/api/contact`, contactForm);
+      setContactMessage(language === 'vn' ? 'Tin nhắn đã gửi thành công!' : 'Message sent successfully!');
+      setContactForm({ name: '', email: '', issue: '', message: '' });
+      setTimeout(() => {
+        setShowContactModal(false);
+        setContactMessage('');
+      }, 1000);
+    } catch (err) {
+      if (err.response?.status === 429) {
+        setContactError(
+          language === 'vn'
+            ? 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.'
+            : 'Too many requests. Please try again later.'
+        );
+      } else {
+        setContactError(
+          err.response?.data?.message || 
+          (language === 'vn' ? 'Không gửi được tin nhắn.' : 'Failed to send message.')
+        );
+      }
+    } finally {
+      setContactSubmitting(false);
     }
   };
 
@@ -511,6 +555,13 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
           <div className="flex items-center gap-3 ml-auto">
             <div className="flex items-center gap-3">
               <button
+                onClick={() => setShowContactModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-sm text-valorant-gold hover:text-white hover:border-valorant-red/40 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {language === 'vn' ? 'Liên hệ' : 'Contact'}
+              </button>
+              <button
                 onClick={() => setLanguage("en")}
                 className={`px-2 py-1 rounded ${language === "en" ? "bg-valorant-red text-white" : "text-valorant-gray hover:text-white"}`}
               >
@@ -678,6 +729,111 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
       </main>
       <FAQ language={language} />
       <Footer language={language} />
+
+      {/* Contact Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="glass-panel rounded-xl border border-white/5 p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-valorant-gold">
+                {language === 'vn' ? 'Liên hệ' : 'Contact'}
+              </h3>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="text-valorant-gray hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">
+                  {language === 'vn' ? 'Tên của bạn' : 'Your name'} *
+                </label>
+                <input
+                  type="text"
+                  value={contactForm.name}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
+                  placeholder={language === 'vn' ? 'Nhập tên của bạn' : 'Enter your name'}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
+                  placeholder={language === 'vn' ? 'email@example.com' : 'email@example.com'}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">
+                  {language === 'vn' ? 'Loại vấn đề' : 'Issue Type'} *
+                </label>
+                <select
+                  value={contactForm.issue}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, issue: e.target.value }))}
+                  className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-valorant-red"
+                  required
+                >
+                  <option value="">{language === 'vn' ? '-- Chọn vấn đề --' : '-- Select issue --'}</option>
+                  <option value="bug">{language === 'vn' ? 'Báo lỗi' : 'Report Bug'}</option>
+                  <option value="feature">{language === 'vn' ? 'Góp ý tính năng mới' : 'Feature Request'}</option>
+                  <option value="question">{language === 'vn' ? 'Hỏi đáp' : 'Question'}</option>
+                  <option value="other">{language === 'vn' ? 'Khác' : 'Other'}</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">
+                  {language === 'vn' ? 'Nội dung tin nhắn' : 'Message'} *
+                </label>
+                <textarea
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                  rows={4}
+                  className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red resize-y"
+                  placeholder={language === 'vn' ? 'Mô tả chi tiết vấn đề của bạn...' : 'Describe your issue in detail...'}
+                  required
+                />
+              </div>
+              
+              {contactMessage && (
+                <div className="text-sm text-emerald-400">{contactMessage}</div>
+              )}
+              {contactError && (
+                <div className="text-sm text-valorant-red">{contactError}</div>
+              )}
+              
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={contactSubmitting}
+                  className="flex-1 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
+                >
+                  {contactSubmitting ? (language === 'vn' ? 'Đang gửi...' : 'Sending...') : (language === 'vn' ? 'Gửi' : 'Send')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowContactModal(false)}
+                  className="px-4 py-2 rounded-lg border border-white/10 text-sm text-white hover:border-valorant-red/40"
+                >
+                  {language === 'vn' ? 'Hủy' : 'Cancel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
