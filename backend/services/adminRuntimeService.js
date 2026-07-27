@@ -265,7 +265,7 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
       return `${index + 1}. ${skinName}`;
     });
 
-    await notifyNtfy(account.ntfyTopicUrl, `Hôm nay shop Valorant cho tài khoản ${account.name}:\n${skinLines.join('\n')}`, 'Daily Shop');
+    await notifyNtfy(account.ntfyTopicUrl, `${skinLines.join('\n')}`, `Daily Shop for ${account.name}`);
 
     const matches = offers.filter((offer) => {
       const skinName = (offer.metadata?.displayName || '').toLowerCase();

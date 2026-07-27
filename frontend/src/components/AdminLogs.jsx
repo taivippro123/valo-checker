@@ -151,6 +151,11 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   };
 
   const fetchSkins = async () => {
+    // Use cached skins if already loaded
+    if (skins.length > 0) {
+      return;
+    }
+    
     setSkinsLoading(true);
     try {
       const res = await axios.get(`${API_URL}/api/skins`);
@@ -584,21 +589,43 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
               <div className="text-sm text-valorant-gray">Chưa có skin nào trong wishlist.</div>
             ) : (
               <div className="space-y-2 max-h-[34rem] overflow-auto pr-1">
-                {wishlist.map((item) => (
-                  <div key={item.skinUuid} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-white break-words">{item.skinName}</div>
-                      <div className="text-[11px] text-valorant-gray break-all">{item.skinUuid}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFromWishlist(item.skinUuid)}
-                      className="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-valorant-gold hover:text-white hover:border-valorant-red/40"
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                ))}
+                {wishlist.map((item) => {
+  // Tìm thông tin skin chi tiết trong mảng skins
+  const matchedSkin = skins.find(
+    (skin) => (skin.levelUuid || skin.uuid) === item.skinUuid
+  );
+  const displayIcon = matchedSkin?.displayIcon;
+
+  return (
+    <div key={item.skinUuid} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
+      {/* Khung hiển thị ảnh skin */}
+      <div className="h-12 w-12 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center p-1">
+        {displayIcon ? (
+          <img 
+            src={displayIcon} 
+            alt={item.skinName} 
+            className="h-full w-full object-contain" 
+          />
+        ) : (
+          <span className="text-[10px] text-valorant-gray">N/A</span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold text-white break-words">{item.skinName}</div>
+        <div className="text-[11px] text-valorant-gray break-all">{item.skinUuid}</div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => removeFromWishlist(item.skinUuid)}
+        className="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-valorant-gold hover:text-white hover:border-valorant-red/40"
+      >
+        Xóa
+      </button>
+    </div>
+  );
+})}
               </div>
             )}
 
