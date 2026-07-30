@@ -8,6 +8,7 @@ import storeRoutes from './routes/store.js';
 import logsRoutes from './routes/logs.js';
 import adminRoutes from './routes/admin.js';
 import contactRoutes from './routes/contact.js';
+import surveyRoutes from './routes/survey.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './config/swagger.js';
 import { loadSkinsCache } from './services/storeService.js';
@@ -49,6 +50,7 @@ app.use('/api/store', storeRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/survey', surveyRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

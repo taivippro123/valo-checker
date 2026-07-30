@@ -214,7 +214,15 @@ const performReauth = async (accountId, { source = 'cron' } = {}) => {
   } catch (error) {
     const isCookieExpired = error.message === 'COOKIE_EXPIRED' || /authenticate\.riotgames\.com\/login/i.test(error.message);
     if (isCookieExpired && account?.ntfyTopicUrl) {
-      await notifyNtfy(account.ntfyTopicUrl, `cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`, 'Riot cookie expired');
+      // Only notify if not notified in the last 24 hours
+      const lastNotifyAt = account.lastCookieExpiredNotifyAt;
+      const now = new Date();
+      const shouldNotify = !lastNotifyAt || (now - new Date(lastNotifyAt)) > 24 * 60 * 60 * 1000;
+      
+      if (shouldNotify) {
+        await notifyNtfy(account.ntfyTopicUrl, `cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`, 'Riot cookie expired');
+        await updateAccount(accountId, { lastCookieExpiredNotifyAt: now });
+      }
     }
 
     await updateAccount(accountId, {

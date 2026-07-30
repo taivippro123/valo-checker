@@ -17,6 +17,7 @@ import translations from "../i18n";
 import FAQ from "./FAQ";
 import Footer from "./Footer";
 import InventoryPanel from "./InventoryPanel";
+import SurveyModal from "./SurveyModal";
 
 const Dashboard = ({ onLogout, API_URL, username }) => {
   const [redirectUrl, setRedirectUrl] = useState("");
@@ -834,6 +835,9 @@ try {
           </div>
         </div>
       )}
+
+      {/* Survey Modal */}
+      <SurveyModal API_URL={API_URL} />
     </div>
   );
 };
