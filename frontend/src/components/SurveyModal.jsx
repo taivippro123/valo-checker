@@ -22,7 +22,7 @@ const SurveyModal = ({ API_URL }) => {
       content:
         "Nếu có tính năng tự thông báo skin hằng ngày, bạn muốn nhận thông báo qua đâu?",
       options: {
-        ntfy: "ntfy (ứng dụng thông báo nhẹ, mã nguồn mở)",
+        ntfy: "(ứng dụng thông báo nhẹ, mã nguồn mở)",
         discord: "Discord",
         custom: "Khác (nhập bên dưới)",
       },
@@ -40,7 +40,7 @@ const SurveyModal = ({ API_URL }) => {
       content:
         "If there was a daily skin notification feature, where would you like to receive notifications?",
       options: {
-        ntfy: "ntfy (lightweight notification app, open source)",
+        ntfy: "(lightweight notification app, open source)",
         discord: "Discord",
         custom: "Other (enter below)",
       },
@@ -199,7 +199,7 @@ const SurveyModal = ({ API_URL }) => {
                 >
                   ntfy
                 </a>{" "}
-                (ứng dụng thông báo nhẹ, mã nguồn mở)
+                {t.options.ntfy}
               </span>
             </label>
 
