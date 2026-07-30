@@ -70,6 +70,10 @@ const accountSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  lastCookieExpiredNotifyAt: {
+    type: Date,
+    default: null
+  },
   isActive: {
     type: Boolean,
     default: true

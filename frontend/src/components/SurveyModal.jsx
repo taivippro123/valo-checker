@@ -187,9 +187,20 @@ const SurveyModal = ({ API_URL }) => {
                 value="ntfy"
                 checked={selectedOption === "ntfy"}
                 onChange={(e) => setSelectedOption(e.target.value)}
-                className="w-4 h-4 accent-valorant-red"
+                className="w-4 h-4 accent-valorant-red flex-shrink-0"
               />
-              <span className="text-sm text-white">{t.options.ntfy}</span>
+              <span className="text-sm text-white">
+                <a
+                  href="https://ntfy.sh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-valorant-red font-medium underline hover:opacity-80 transition-opacity"
+                >
+                  ntfy
+                </a>{" "}
+                (ứng dụng thông báo nhẹ, mã nguồn mở)
+              </span>
             </label>
 
             <label className="flex items-center gap-3 p-3 rounded-lg border border-white/10 cursor-pointer hover:border-valorant-red/40 transition-colors">
