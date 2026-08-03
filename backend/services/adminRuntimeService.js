@@ -1,10 +1,11 @@
 import cron from 'node-cron';
 import Account from '../models/Account.js';
 import WishlistItem from '../models/WishlistItem.js';
-import { decryptText, encryptText } from '../utils/crypto.js';
 import { fetchAccountStore } from './storeService.js';
+import { sendDailyShopDiscord } from './discordService.js';
 import { getClientVersion, refreshTokenWithCookie } from './riotAuthService.js';
 import { sendNtfyNotification } from './ntfyService.js';
+import { decryptText, encryptText } from '../utils/crypto.js';
 
 const REAUTH_INTERVAL_MS = 50 * 60 * 1000;
 const SHOP_CRON_EXPRESSION = '1 7 * * *';
@@ -50,6 +51,7 @@ const decryptAccountDocument = (doc) => {
     redirectUrl: doc.redirectUrl || '',
     riotCookies: decryptText(doc.riotCookies || ''),
     ntfyTopicUrl: doc.ntfyTopicUrl || '',
+    discordWebhookUrl: doc.discordWebhookUrl || '',
     accessToken: decryptText(doc.accessToken || ''),
     entitlementToken: decryptText(doc.entitlementToken || ''),
     idToken: decryptText(doc.idToken || ''),
@@ -238,8 +240,8 @@ const performReauth = async (accountId, { source = 'cron' } = {}) => {
 
 const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
   const account = await getAccountById(accountId);
-  if (!account?.ntfyTopicUrl) {
-    return { ok: false, reason: 'NO_NTFY_TOPIC' };
+  if (!account?.ntfyTopicUrl && !account?.discordWebhookUrl) {
+    return { ok: false, reason: 'NO_NOTIFICATION_CHANNEL' };
   }
 
   if (source === 'cron' && account.lastShopCheckAt) {
@@ -260,7 +262,9 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     const offers = storefront?.skinsPanel?.offers || [];
 
     if (!offers.length) {
-      await notifyNtfy(account.ntfyTopicUrl, `Hôm nay shop Valorant cho tài khoản ${account.name} chưa có dữ liệu skin.`, 'Daily Shop');
+      if (account.ntfyTopicUrl) {
+        await notifyNtfy(account.ntfyTopicUrl, `Hôm nay shop Valorant cho tài khoản ${account.name} chưa có dữ liệu skin.`, 'Daily Shop');
+      }
       return;
     }
 
@@ -268,12 +272,37 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     const wishlistUuidSet = new Set(wishlistItems.map((item) => (item.skinUuid || '').toLowerCase()));
     const wishlistNameSet = new Set(wishlistItems.map((item) => (item.skinName || '').toLowerCase()));
 
-    const skinLines = offers.map((offer, index) => {
+    // Prepare skin data for Discord
+    const skinsData = offers.map((offer) => {
       const skinName = offer.metadata?.displayName || 'Unknown Skin';
-      return `${index + 1}. ${skinName}`;
+      const price = offer.priceVP || 0;
+      const tier = offer.metadata?.contentTier?.displayName || 'Unknown';
+      const tierIcon = offer.metadata?.contentTier?.displayIcon || '';
+      const displayIcon = offer.metadata?.displayIcon || offer.metadata?.image || '';
+      
+      return {
+        displayName: skinName,
+        price: price,
+        tier: tier,
+        tierIcon: tierIcon,
+        displayIcon: displayIcon
+      };
     });
 
-    await notifyNtfy(account.ntfyTopicUrl, `${skinLines.join('\n')}`, `Daily Shop for ${account.name}`);
+    // Send Discord notification if webhook URL is configured
+    if (account.discordWebhookUrl) {
+      await sendDailyShopDiscord(account.discordWebhookUrl, account.name, skinsData, account.shard || 'ap');
+    }
+
+    // Send ntfy notification if configured
+    if (account.ntfyTopicUrl) {
+      const skinLines = offers.map((offer, index) => {
+        const skinName = offer.metadata?.displayName || 'Unknown Skin';
+        return `${index + 1}. ${skinName}`;
+      });
+
+      await notifyNtfy(account.ntfyTopicUrl, `${skinLines.join('\n')}`, `Daily Shop for ${account.name}`);
+    }
 
     const matches = offers.filter((offer) => {
       const skinName = (offer.metadata?.displayName || '').toLowerCase();
@@ -283,7 +312,9 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
 
     if (matches.length) {
       const matchText = matches.map((offer) => offer.metadata?.displayName || 'Unknown Skin').join(', ');
-      await notifyNtfy(account.ntfyTopicUrl, `Tài khoản ${account.name} - skin yêu thích xuất hiện: ${matchText}`, 'Wishlist Match');
+      if (account.ntfyTopicUrl) {
+        await notifyNtfy(account.ntfyTopicUrl, `Tài khoản ${account.name} - skin yêu thích xuất hiện: ${matchText}`, 'Wishlist Match');
+      }
     }
 
     await updateAccount(accountId, {

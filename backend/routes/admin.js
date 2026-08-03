@@ -83,11 +83,11 @@ router.get('/accounts/:id', protect, requireAdmin, async (req, res) => {
 
 router.post('/accounts', protect, requireAdmin, async (req, res) => {
   try {
-    const { name, redirectUrl = '', riotCookies = '', ntfyTopicUrl = '' } = req.body || {};
+    const { name, redirectUrl = '', riotCookies = '', ntfyTopicUrl = '', discordWebhookUrl = '' } = req.body || {};
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Account name is required' });
     }
-    const account = await createAccount({ name, redirectUrl, riotCookies, ntfyTopicUrl });
+    const account = await createAccount({ name, redirectUrl, riotCookies, ntfyTopicUrl, discordWebhookUrl });
     res.json({ message: 'Account created', account });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -96,12 +96,13 @@ router.post('/accounts', protect, requireAdmin, async (req, res) => {
 
 router.put('/accounts/:id', protect, requireAdmin, async (req, res) => {
   try {
-    const { name, redirectUrl, riotCookies, ntfyTopicUrl, isActive } = req.body || {};
+    const { name, redirectUrl, riotCookies, ntfyTopicUrl, discordWebhookUrl, isActive } = req.body || {};
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (redirectUrl !== undefined) updates.redirectUrl = redirectUrl;
     if (riotCookies !== undefined) updates.riotCookies = riotCookies;
     if (ntfyTopicUrl !== undefined) updates.ntfyTopicUrl = ntfyTopicUrl;
+    if (discordWebhookUrl !== undefined) updates.discordWebhookUrl = discordWebhookUrl;
     if (isActive !== undefined) updates.isActive = isActive;
     
     const account = await updateAccount(req.params.id, updates);

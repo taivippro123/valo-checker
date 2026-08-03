@@ -15,7 +15,8 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     name: '',
     redirectUrl: '',
     riotCookies: '',
-    ntfyTopicUrl: ''
+    ntfyTopicUrl: '',
+    discordWebhookUrl: ''
   });
   const [accountFormSaving, setAccountFormSaving] = useState(false);
   const [accountFormMessage, setAccountFormMessage] = useState('');
@@ -99,7 +100,7 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
       }
       setShowAccountForm(false);
       setEditingAccountId(null);
-      setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '' });
+      setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '', discordWebhookUrl: '' });
       await fetchAccounts();
     } catch (err) {
       setAccountFormError(err.response?.data?.message || editingAccountId ? 'Không cập nhật được tài khoản.' : 'Không tạo được tài khoản.');
@@ -114,7 +115,8 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
       name: account.name || '',
       redirectUrl: account.redirectUrl || '',
       riotCookies: account.riotCookies || '',
-      ntfyTopicUrl: account.ntfyTopicUrl || ''
+      ntfyTopicUrl: account.ntfyTopicUrl || '',
+      discordWebhookUrl: account.discordWebhookUrl || ''
     });
     setShowAccountForm(true);
   };
@@ -349,6 +351,15 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
               onChange={(e) => setAccountForm((prev) => ({ ...prev, ntfyTopicUrl: e.target.value }))}
               className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
               placeholder="https://ntfy.sh/your-topic"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">discordWebhookUrl</label>
+            <input
+              value={accountForm.discordWebhookUrl}
+              onChange={(e) => setAccountForm((prev) => ({ ...prev, discordWebhookUrl: e.target.value }))}
+              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
+              placeholder="https://discord.com/api/webhooks/..."
             />
           </div>
           <div>
