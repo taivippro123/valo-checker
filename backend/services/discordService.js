@@ -13,60 +13,101 @@ const buildCollage = async (
   imageUrls,
   watermarkText = "https://valocheck.vercel.app/",
 ) => {
-  const cellWidth = 480;
-  const cellHeight = 260;
-  const cols = 2;
-  const rows = Math.ceil(imageUrls.length / cols);
-  const canvasWidth = cellWidth * cols;
-  const canvasHeight = cellHeight * rows;
+  try {
+    const cellWidth = 480;
+    const cellHeight = 260;
+    const cols = 2;
+    const rows = Math.ceil(imageUrls.length / cols);
+    const canvasWidth = cellWidth * cols;
+    const canvasHeight = cellHeight * rows;
 
-  // Tải + resize từng ảnh cho vừa khung ô (giữ nguyên tỉ lệ, nền trong suốt)
-  const buffers = await Promise.all(
-    imageUrls.map(async (url) => {
-      const raw = await fetchImageBuffer(url);
-      return sharp(raw)
-        .resize(cellWidth, cellHeight, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
-    }),
-  );
+    // Tải + resize từng ảnh cho vừa khung ô (giữ nguyên tỉ lệ, nền trong suốt)
+    const buffers = await Promise.all(
+      imageUrls.map(async (url) => {
+        const raw = await fetchImageBuffer(url);
+        return sharp(raw)
+          .resize(cellWidth, cellHeight, {
+            fit: "contain",
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
+          })
+          .png()
+          .toBuffer();
+      }),
+    );
 
-  const composites = buffers.map((buf, i) => ({
-    input: buf,
-    left: (i % cols) * cellWidth,
-    top: Math.floor(i / cols) * cellHeight,
-  }));
+    const composites = buffers.map((buf, i) => ({
+      input: buf,
+      left: (i % cols) * cellWidth,
+      top: Math.floor(i / cols) * cellHeight,
+    }));
 
-  // Watermark chữ, đặt giữa canvas (khoảng trống giữa các hàng ảnh), mờ nhẹ để không che ảnh
-  const watermarkSvg = `
-    <svg width="${canvasWidth}" height="${canvasHeight}">
-      <text
-        x="50%"
-        y="50%"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        font-family="Arial, sans-serif"
-        font-size="33"
-        font-weight="bold"
-        fill="rgba(255,255,255,1)"
-      >${watermarkText}</text>
-    </svg>
-  `;
-  composites.push({ input: Buffer.from(watermarkSvg), left: 0, top: 0 });
+    // Watermark chữ, đặt giữa canvas (khoảng trống giữa các hàng ảnh), mờ nhẹ để không che ảnh
+    const watermarkSvg = `
+      <svg width="${canvasWidth}" height="${canvasHeight}">
+        <text
+          x="50%"
+          y="50%"
+          text-anchor="middle"
+          dominant-baseline="middle"
+          font-family="Arial, sans-serif"
+          font-size="33"
+          font-weight="bold"
+          fill="rgba(255,255,255,1)"
+        >${watermarkText}</text>
+      </svg>
+    `;
+    composites.push({ input: Buffer.from(watermarkSvg), left: 0, top: 0 });
 
-  const canvas = sharp({
-    create: {
-      width: canvasWidth,
-      height: canvasHeight,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  }).composite(composites);
+    const canvas = sharp({
+      create: {
+        width: canvasWidth,
+        height: canvasHeight,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    }).composite(composites);
 
-  return canvas.png().toBuffer();
+    return canvas.png().toBuffer();
+  } catch (error) {
+    console.error('[DiscordService] Error building collage:', error.message);
+    // Fallback: tạo collage không có watermark nếu lỗi
+    const cellWidth = 480;
+    const cellHeight = 260;
+    const cols = 2;
+    const rows = Math.ceil(imageUrls.length / cols);
+    const canvasWidth = cellWidth * cols;
+    const canvasHeight = cellHeight * rows;
+
+    const buffers = await Promise.all(
+      imageUrls.map(async (url) => {
+        const raw = await fetchImageBuffer(url);
+        return sharp(raw)
+          .resize(cellWidth, cellHeight, {
+            fit: "contain",
+            background: { r: 0, g: 0, b: 0, alpha: 0 },
+          })
+          .png()
+          .toBuffer();
+      }),
+    );
+
+    const composites = buffers.map((buf, i) => ({
+      input: buf,
+      left: (i % cols) * cellWidth,
+      top: Math.floor(i / cols) * cellHeight,
+    }));
+
+    const canvas = sharp({
+      create: {
+        width: canvasWidth,
+        height: canvasHeight,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    }).composite(composites);
+
+    return canvas.png().toBuffer();
+  }
 };
 
 const sendDailyShopDiscord = async (
