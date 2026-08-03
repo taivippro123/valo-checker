@@ -18,6 +18,10 @@ const accountSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  discordWebhookUrl: {
+    type: String,
+    default: ''
+  },
   accessToken: {
     type: String,
     default: ''
