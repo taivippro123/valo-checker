@@ -102,17 +102,17 @@ const sendDailyShopDiscord = async (
 
     const embed = {
       title: `🎮 Daily Shop - ${accountName}`,
-      description: `Region: ${shard.toUpperCase()}\n${skins.length} skins available today\n\nhttps://valocheck.vercel.app/\n\n${skinListText}`,
+      description: `Region: ${shard.toUpperCase()}\n${skins.length} skins available today\n\n${skinListText}`,
       color: 0xff4655,
       timestamp: new Date().toISOString(),
       footer: {
-        text: "Valorant Shop Checker",
+        text: "https://valocheck.vercel.app/",
       },
     };
 
     if (imageUrls.length > 0) {
-      // Ghép tất cả ảnh skin thành 1 collage duy nhất -> hiển thị full, không bị crop, không cần bấm
-      const collageBuffer = await buildCollage(imageUrls);
+      // Ghép tất cả ảnh skin thành 1 collage với watermark
+      const collageBuffer = await buildCollage(imageUrls, "https://valocheck.vercel.app/");
       embed.image = { url: "attachment://collage.png" };
 
       const form = new FormData();
