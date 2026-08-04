@@ -41,10 +41,15 @@ const buildCollage = async (
       top: Math.floor(i / cols) * cellHeight,
     }));
 
-    // Watermark chữ, đặt giữa canvas (khoảng trống giữa các hàng ảnh), mờ nhẹ để không che ảnh
+    // Watermark chữ với text shadow để hiển thị trên mọi nền, không che skins
     const watermarkSvg = `
       <svg width="${canvasWidth}" height="${canvasHeight}">
-        <rect width="100%" height="100%" fill="rgba(20,20,20,0.95)" />
+        <defs>
+          <filter id="textShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.8)" />
+            <feDropShadow dx="-2" dy="-2" stdDeviation="2" flood-color="rgba(255,255,255,0.8)" />
+          </filter>
+        </defs>
         <text
           x="50%"
           y="50%"
@@ -52,8 +57,7 @@ const buildCollage = async (
           dominant-baseline="middle"
           font-family="Arial, sans-serif"
           font-size="33"
-          font-weight="bold"
-          fill="rgba(255,255,255,1)"
+          fill="#F46545"
         >${watermarkText}</text>
       </svg>
     `;
@@ -64,7 +68,7 @@ const buildCollage = async (
         width: canvasWidth,
         height: canvasHeight,
         channels: 4,
-        background: { r: 20, g: 20, b: 20, alpha: 1 },
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
       },
     }).composite(composites);
 
@@ -103,11 +107,37 @@ const buildCollage = async (
         width: canvasWidth,
         height: canvasHeight,
         channels: 4,
-        background: { r: 20, g: 20, b: 20, alpha: 1 },
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
       },
     }).composite(composites);
 
     return canvas.png().toBuffer();
+  }
+};
+
+const sendDiscordNotification = async (webhookUrl, message, title = 'Valorant Shop Checker') => {
+  if (!webhookUrl) {
+    console.log('[DiscordService] No webhook URL provided, skipping Discord notification');
+    return false;
+  }
+
+  try {
+    const embed = {
+      title: title,
+      description: message,
+      color: 0xff4655,
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'Valorant Shop Checker'
+      }
+    };
+
+    await axios.post(webhookUrl, { embeds: [embed] });
+    console.log('[DiscordService] Notification sent successfully');
+    return true;
+  } catch (error) {
+    console.error('[DiscordService] Failed to send Discord webhook:', error.message);
+    return false;
   }
 };
 
@@ -180,4 +210,4 @@ const sendDailyShopDiscord = async (
   }
 };
 
-export { sendDailyShopDiscord };
+export { sendDailyShopDiscord, sendDiscordNotification };

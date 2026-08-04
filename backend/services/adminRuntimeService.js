@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import Account from '../models/Account.js';
 import WishlistItem from '../models/WishlistItem.js';
 import { fetchAccountStore } from './storeService.js';
-import { sendDailyShopDiscord } from './discordService.js';
+import { sendDailyShopDiscord, sendDiscordNotification } from './discordService.js';
 import { getClientVersion, refreshTokenWithCookie } from './riotAuthService.js';
 import { sendNtfyNotification } from './ntfyService.js';
 import { decryptText, encryptText } from '../utils/crypto.js';
@@ -215,14 +215,20 @@ const performReauth = async (accountId, { source = 'cron' } = {}) => {
     return { ok: true, newCookieString, tokenExpiresAt, accessToken: result.accessToken, entitlementToken: result.entitlementToken };
   } catch (error) {
     const isCookieExpired = error.message === 'COOKIE_EXPIRED' || /authenticate\.riotgames\.com\/login/i.test(error.message);
-    if (isCookieExpired && account?.ntfyTopicUrl) {
+    if (isCookieExpired && (account?.ntfyTopicUrl || account?.discordWebhookUrl)) {
       // Only notify if not notified in the last 24 hours
       const lastNotifyAt = account.lastCookieExpiredNotifyAt;
       const now = new Date();
       const shouldNotify = !lastNotifyAt || (now - new Date(lastNotifyAt)) > 24 * 60 * 60 * 1000;
       
       if (shouldNotify) {
-        await notifyNtfy(account.ntfyTopicUrl, `cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`, 'Riot cookie expired');
+        const message = `cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`;
+        if (account.ntfyTopicUrl) {
+          await notifyNtfy(account.ntfyTopicUrl, message, 'Riot cookie expired');
+        }
+        if (account.discordWebhookUrl) {
+          await sendDiscordNotification(account.discordWebhookUrl, message, '🔴 Riot Cookie Expired');
+        }
         await updateAccount(accountId, { lastCookieExpiredNotifyAt: now });
       }
     }
@@ -314,6 +320,9 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
       const matchText = matches.map((offer) => offer.metadata?.displayName || 'Unknown Skin').join(', ');
       if (account.ntfyTopicUrl) {
         await notifyNtfy(account.ntfyTopicUrl, `Tài khoản ${account.name} - skin yêu thích xuất hiện: ${matchText}`, 'Wishlist Match');
+      }
+      if (account.discordWebhookUrl) {
+        await sendDiscordNotification(account.discordWebhookUrl, `Tài khoản ${account.name} - skin yêu thích xuất hiện: ${matchText}`, '⭐ Wishlist Match');
       }
     }
 
