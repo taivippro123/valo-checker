@@ -44,6 +44,7 @@ const buildCollage = async (
     // Watermark chữ, đặt giữa canvas (khoảng trống giữa các hàng ảnh), mờ nhẹ để không che ảnh
     const watermarkSvg = `
       <svg width="${canvasWidth}" height="${canvasHeight}">
+        <rect width="100%" height="100%" fill="rgba(20,20,20,0.95)" />
         <text
           x="50%"
           y="50%"
@@ -63,7 +64,7 @@ const buildCollage = async (
         width: canvasWidth,
         height: canvasHeight,
         channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
+        background: { r: 20, g: 20, b: 20, alpha: 1 },
       },
     }).composite(composites);
 
@@ -102,7 +103,7 @@ const buildCollage = async (
         width: canvasWidth,
         height: canvasHeight,
         channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
+        background: { r: 20, g: 20, b: 20, alpha: 1 },
       },
     }).composite(composites);
 
