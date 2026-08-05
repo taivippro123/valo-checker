@@ -18,6 +18,7 @@ import InventoryPanel from "./InventoryPanel";
 import SurveyModal from "./SurveyModal";
 
 const Dashboard = ({ onLogout, API_URL, username, fullName }) => {
+  const [showPromoDialog, setShowPromoDialog] = useState(true);
   const [redirectUrl, setRedirectUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [serverHealth, setServerHealth] = useState({
@@ -65,6 +66,10 @@ const Dashboard = ({ onLogout, API_URL, username, fullName }) => {
     const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, [API_URL]);
+
+  useEffect(() => {
+    setShowPromoDialog(true);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -530,6 +535,57 @@ try {
 
   return (
     <div className="min-h-screen bg-valorant-darker flex flex-col">
+      {showPromoDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4">
+          <div className="glass-panel relative flex max-h-[calc(100dvh-1rem)] w-full max-w-[96vw] flex-col overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50 sm:max-w-2xl sm:max-h-[calc(100dvh-2rem)]">
+            <button
+              type="button"
+              onClick={() => setShowPromoDialog(false)}
+              className="absolute right-3 top-3 z-10 rounded-full bg-black/40 p-2 text-white/80 transition-colors hover:bg-black/60 hover:text-white sm:right-4 sm:top-4"
+              aria-label="Close promotion dialog"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="grid flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[1.05fr_0.95fr]">
+              <div className="order-2 flex flex-col justify-center p-5 sm:p-6 md:order-1 md:p-8">
+                <div className="mb-3 inline-flex w-fit rounded-full border border-valorant-red/40 bg-valorant-red/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-valorant-red sm:text-[11px]">
+                  Daily skin alert
+                </div>
+                <h2 className="text-xl font-black leading-tight text-white sm:text-2xl md:text-3xl">
+                  Bấm đăng nhập và xem hướng dẫn để tự động nhận skin shop hằng ngày
+                </h2>
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href="/login"
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-valorant-red px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-valorant-red-hover sm:w-auto sm:py-2.5"
+                  >
+                    Đăng nhập
+                  </a>
+                  <a
+                    href="/guide"
+                    className="inline-flex w-full items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white transition-colors hover:border-valorant-red/40 hover:bg-white/10 sm:w-auto sm:py-2.5"
+                  >
+                    Xem hướng dẫn
+                  </a>
+                </div>
+              </div>
+
+              <div className="order-1 flex items-center justify-center bg-black/20 p-3 sm:p-4 md:order-2 md:p-6">
+                <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-[#111] p-2 shadow-[0_12px_36px_rgba(0,0,0,0.25)] flex items-center justify-center">
+                  <img
+                    src="/dailyshop.png"
+                    alt="Quảng cáo daily shop Valorant"
+                    className="block max-h-[28vh] w-auto max-w-full object-contain sm:max-h-[32vh] md:max-h-[36vh]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <header className="glass-panel border-b border-white/5 px-6 py-4 shrink-0 relative z-20">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
