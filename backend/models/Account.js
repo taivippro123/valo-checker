@@ -6,6 +6,11 @@ const accountSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   redirectUrl: {
     type: String,
     default: ''

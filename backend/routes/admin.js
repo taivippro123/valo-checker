@@ -1,35 +1,16 @@
 import express from 'express';
 import Log from '../models/Log.js';
+import User from '../models/User.js';
+import Account from '../models/Account.js';
 import { protect } from '../middleware/authMiddleware.js';
-import { 
-  getAccounts, 
-  getAccountById, 
-  createAccount, 
-  updateAccount, 
-  deleteAccount, 
-  getAutomationStatus, 
-  getWishlistItems, 
-  removeWishlistItem, 
-  replaceWishlistItems, 
-  triggerReauthNow, 
-  triggerShopCheckNow 
-} from '../services/adminRuntimeService.js';
 
 const router = express.Router();
 
-const parseAdminSecret = () => {
-  const secret = process.env.ADMIN_SECRET || 'valo-admin-secret';
-  return secret;
-};
-
 const requireAdmin = (req, res, next) => {
-  const provided = req.headers['x-admin-secret'];
-  const isAdminUser = req.user?.username?.toLowerCase() === 'admin';
-  if ((provided && provided === parseAdminSecret()) || isAdminUser) {
-    return next();
+  if (req.user?.role !== 'admin') {
+    return res.status(401).json({ message: 'Admin access required' });
   }
-
-  return res.status(401).json({ message: 'Admin access required' });
+  return next();
 };
 
 router.get('/logs', protect, requireAdmin, async (req, res) => {
@@ -60,142 +41,111 @@ router.delete('/logs', protect, requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/accounts', protect, requireAdmin, async (req, res) => {
+// Get all users
+router.get('/users', protect, requireAdmin, async (req, res) => {
   try {
-    const accounts = await getAccounts();
-    res.json({ accounts });
+    const users = await User.find({}).select('-password').lean();
+    const usersWithAccounts = await Promise.all(users.map(async (user) => {
+      const accounts = await Account.find({ userId: user._id }).lean();
+      return {
+        id: user._id?.toString?.() || user.id || null,
+        fullName: user.fullName || '',
+        username: user.username || '',
+        email: user.email || '',
+        role: user.role || 'user',
+        isPremium: user.isPremium || false,
+        isActive: user.isActive !== false,
+        language: user.language || 'en',
+        createdAt: user.createdAt || null,
+        accountCount: accounts.length,
+        accounts: accounts.map(acc => ({
+          id: acc._id?.toString?.() || acc.id || null,
+          name: acc.name || '',
+          shard: acc.shard || 'ap',
+          isActive: acc.isActive !== false,
+          hasNotifications: !!(acc.ntfyTopicUrl || acc.discordWebhookUrl)
+        }))
+      };
+    }));
+    res.json({ users: usersWithAccounts });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.get('/accounts/:id', protect, requireAdmin, async (req, res) => {
+// Get specific user with their accounts
+router.get('/users/:id', protect, requireAdmin, async (req, res) => {
   try {
-    const account = await getAccountById(req.params.id);
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
+    const user = await User.findById(req.params.id).select('-password').lean();
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ account });
+
+    const accounts = await Account.find({ userId: user._id }).lean();
+    const userDetails = {
+      id: user._id?.toString?.() || user.id || null,
+      fullName: user.fullName || '',
+      username: user.username || '',
+      email: user.email || '',
+      role: user.role || 'user',
+      isPremium: user.isPremium || false,
+      isActive: user.isActive !== false,
+      language: user.language || 'en',
+      createdAt: user.createdAt || null,
+      accounts: accounts.map(acc => ({
+        id: acc._id?.toString?.() || acc.id || null,
+        name: acc.name || '',
+        shard: acc.shard || 'ap',
+        isActive: acc.isActive !== false,
+        redirectUrl: acc.redirectUrl || '',
+        ntfyTopicUrl: acc.ntfyTopicUrl || '',
+        discordWebhookUrl: acc.discordWebhookUrl || '',
+        lastReauthAt: acc.lastReauthAt || null,
+        lastReauthStatus: acc.lastReauthStatus || '',
+        lastShopCheckAt: acc.lastShopCheckAt || null,
+        lastShopCheckStatus: acc.lastShopCheckStatus || ''
+      }))
+    };
+
+    res.json({ user: userDetails });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.post('/accounts', protect, requireAdmin, async (req, res) => {
+// Ban user
+router.put('/users/:id/ban', protect, requireAdmin, async (req, res) => {
   try {
-    const { name, redirectUrl = '', riotCookies = '', ntfyTopicUrl = '', discordWebhookUrl = '' } = req.body || {};
-    if (!name || !name.trim()) {
-      return res.status(400).json({ message: 'Account name is required' });
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    const account = await createAccount({ name, redirectUrl, riotCookies, ntfyTopicUrl, discordWebhookUrl });
-    res.json({ message: 'Account created', account });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
 
-router.put('/accounts/:id', protect, requireAdmin, async (req, res) => {
-  try {
-    const { name, redirectUrl, riotCookies, ntfyTopicUrl, discordWebhookUrl, isActive } = req.body || {};
-    const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (redirectUrl !== undefined) updates.redirectUrl = redirectUrl;
-    if (riotCookies !== undefined) updates.riotCookies = riotCookies;
-    if (ntfyTopicUrl !== undefined) updates.ntfyTopicUrl = ntfyTopicUrl;
-    if (discordWebhookUrl !== undefined) updates.discordWebhookUrl = discordWebhookUrl;
-    if (isActive !== undefined) updates.isActive = isActive;
-    
-    const account = await updateAccount(req.params.id, updates);
-    if (!account) {
-      return res.status(404).json({ message: 'Account not found' });
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot ban admin users' });
     }
-    res.json({ message: 'Account updated', account });
+
+    user.isActive = false;
+    await user.save();
+
+    res.json({ message: 'User banned successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.delete('/accounts/:id', protect, requireAdmin, async (req, res) => {
+// Unban user
+router.put('/users/:id/unban', protect, requireAdmin, async (req, res) => {
   try {
-    const result = await deleteAccount(req.params.id);
-    if (!result) {
-      return res.status(404).json({ message: 'Account not found' });
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    res.json({ message: 'Account deleted' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
 
-router.get('/automation/status', protect, requireAdmin, async (req, res) => {
-  try {
-    const status = await getAutomationStatus();
-    res.json({ status });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+    user.isActive = true;
+    await user.save();
 
-router.post('/automation/reauth-now', protect, requireAdmin, async (req, res) => {
-  try {
-    const { accountId } = req.body || {};
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
-    }
-    const result = await triggerReauthNow(accountId);
-    res.json({ message: result.ok ? 'Reauth complete' : 'Reauth failed', result });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.post('/automation/shop-now', protect, requireAdmin, async (req, res) => {
-  try {
-    const { accountId } = req.body || {};
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
-    }
-    const result = await triggerShopCheckNow(accountId);
-    res.json({ message: result.ok ? 'Shop check complete' : 'Shop check failed', result });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.get('/wishlist', protect, requireAdmin, async (req, res) => {
-  try {
-    const { accountId } = req.query || {};
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
-    }
-    const wishlist = await getWishlistItems(accountId);
-    res.json({ wishlist });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.put('/wishlist', protect, requireAdmin, async (req, res) => {
-  try {
-    const { accountId, items = [] } = req.body || {};
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
-    }
-    const wishlist = await replaceWishlistItems(accountId, items);
-    res.json({ message: 'Wishlist saved', wishlist });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.delete('/wishlist/:skinUuid', protect, requireAdmin, async (req, res) => {
-  try {
-    const { accountId } = req.query || {};
-    if (!accountId) {
-      return res.status(400).json({ message: 'Account ID is required' });
-    }
-    await removeWishlistItem(accountId, req.params.skinUuid);
-    res.json({ message: 'Wishlist item removed' });
+    res.json({ message: 'User unbanned successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

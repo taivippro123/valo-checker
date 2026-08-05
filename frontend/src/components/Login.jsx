@@ -1,15 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Lock, User, Eye, EyeOff, ShieldAlert, Terminal } from 'lucide-react';
+import { Lock, User, Terminal, Globe, Eye, EyeOff } from 'lucide-react';
+import translations from '../i18n';
+import { toast } from 'sonner';
 
 const Login = ({ onLoginSuccess, API_URL }) => {
-  const [isSetup, setIsSetup] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSetup, setIsSetup] = useState(false);
+  const [language, setLanguage] = useState('vn');
+  const [showPassword, setShowPassword ] = useState(false)
+  const t = translations[language] || translations.vn;
+  const [showResetPanel, setShowResetPanel] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetOtpSent, setResetOtpSent] = useState(false);
+  const resetCloseTimerRef = useRef(null);
 
   // Check if system requires initial setup
   useEffect(() => {
@@ -24,32 +35,94 @@ const Login = ({ onLoginSuccess, API_URL }) => {
     checkSetup();
   }, [API_URL]);
 
+  useEffect(() => {
+    return () => {
+      if (resetCloseTimerRef.current) {
+        clearTimeout(resetCloseTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     if (isSetup && password !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error(t.login.passwordMismatch);
       setLoading(false);
       return;
     }
 
     try {
-      const endpoint = isSetup ? '/api/auth/register' : '/api/auth/login';
+      const endpoint = isSetup ? '/api/auth/setup' : '/api/auth/login';
       const response = await axios.post(`${API_URL}${endpoint}`, {
         username,
         password
       });
 
       if (response.data && response.data.token) {
-        const isAdmin = username.trim().toLowerCase() === 'admin';
-        onLoginSuccess(response.data.token, response.data.username, isAdmin);
+        onLoginSuccess(response.data.token, response.data.username, response.data.role || 'user', response.data.language || 'en', response.data.fullName || '');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Please try again.');
+      toast.error(err.response?.data?.message || t.login.loginFailed);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendResetOtp = async (e) => {
+    e.preventDefault();
+    setResetLoading(true);
+
+    try {
+      await axios.post(`${API_URL}/api/auth/forgot-password`, {
+        identifier: resetIdentifier
+      });
+      setResetOtpSent(true);
+      toast.success(t.login.otpSent);
+    } catch (err) {
+      toast.error(err.response?.data?.message || t.login.resetRequestFailed);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+
+    if (resetPassword !== resetConfirmPassword) {
+      toast.error(t.login.passwordMismatch);
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/reset-password`, {
+        identifier: resetIdentifier,
+        otp: resetOtp,
+        newPassword: resetPassword
+      });
+
+      toast.success(response.data?.message || t.login.resetSuccess);
+      setResetOtpSent(false);
+      setResetOtp('');
+      setResetPassword('');
+      setResetConfirmPassword('');
+      if (resetCloseTimerRef.current) {
+        clearTimeout(resetCloseTimerRef.current);
+      }
+      resetCloseTimerRef.current = setTimeout(() => {
+        setShowResetPanel(false);
+        setResetIdentifier('');
+        setResetOtp('');
+        setResetPassword('');
+        setResetConfirmPassword('');
+        setResetOtpSent(false);
+      }, 2000);
+    } catch (err) {
+      toast.error(err.response?.data?.message || t.login.resetPasswordFailed);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -73,25 +146,38 @@ const Login = ({ onLoginSuccess, API_URL }) => {
             <Terminal className="w-8 h-8 text-valorant-red" />
           </div>
           <h1 className="text-2xl font-bold tracking-wider uppercase text-valorant-gold">
-            VALORANT CHECKER
+            {t.login.title}
           </h1>
           <p className="text-valorant-gray text-xs mt-1">
-            {isSetup ? 'Initial Dashboard Setup' : 'Local Administrator Portal'}
+            {isSetup ? t.login.initialSetup : t.login.subtitle}
           </p>
         </div>
 
-        {error && (
-          <div className="flex items-center gap-3 bg-valorant-red/10 border border-valorant-red/20 text-valorant-red p-3 rounded-lg text-sm mb-6 animate-shake">
-            <ShieldAlert className="w-5 h-5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Language Selector */}
+          <div>
+            <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
+              {t.register.language}
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-valorant-gray">
+                <Globe className="w-5 h-5" />
+              </span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
+              >
+                <option value="en">English</option>
+                <option value="vn">Tiếng Việt</option>
+              </select>
+            </div>
+          </div>
+
           {/* Username */}
           <div>
             <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
-              Dashboard Username
+              {t.login.username}
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-valorant-gray">
@@ -102,7 +188,7 @@ const Login = ({ onLoginSuccess, API_URL }) => {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder={t.login.usernamePlaceholder}
                 className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 pl-10 pr-4 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
               />
             </div>
@@ -111,7 +197,7 @@ const Login = ({ onLoginSuccess, API_URL }) => {
           {/* Password */}
           <div>
             <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
-              Password
+              {t.login.password}
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-valorant-gray">
@@ -122,7 +208,7 @@ const Login = ({ onLoginSuccess, API_URL }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t.login.passwordPlaceholder}
                 className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 pl-10 pr-10 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
               />
               <button
@@ -135,11 +221,11 @@ const Login = ({ onLoginSuccess, API_URL }) => {
             </div>
           </div>
 
-          {/* Confirm Password (only for setup) */}
+          {/* Confirm Password (setup only) */}
           {isSetup && (
             <div>
               <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
-                Confirm Password
+                {t.login.confirmPassword}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-valorant-gray">
@@ -150,7 +236,7 @@ const Login = ({ onLoginSuccess, API_URL }) => {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t.login.passwordPlaceholder}
                   className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 pl-10 pr-10 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
                 />
               </div>
@@ -169,15 +255,128 @@ const Login = ({ onLoginSuccess, API_URL }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Processing...
+                {t.login.processing}
               </span>
             ) : isSetup ? (
-              'Create Admin Account'
+              t.login.createAdminButton
             ) : (
-              'Access Panel'
+              t.login.loginButton
             )}
           </button>
         </form>
+
+        {!isSetup && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (resetCloseTimerRef.current) {
+                  clearTimeout(resetCloseTimerRef.current);
+                  resetCloseTimerRef.current = null;
+                }
+                setShowResetPanel((prev) => !prev);
+              }}
+              className="w-full text-center text-sm text-valorant-gray hover:text-white transition-colors"
+            >
+              {showResetPanel ? t.login.backToLogin : t.login.forgotPassword}
+            </button>
+          </div>
+        )}
+
+        {!isSetup && showResetPanel && (
+          <div className="mt-5 rounded-xl border border-white/10 bg-valorant-dark/80 p-4 space-y-4">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">{t.login.resetPasswordTitle}</h2>
+              <p className="text-xs text-valorant-gray mt-1">{t.login.resetPasswordSubtitle}</p>
+            </div>
+
+            <form onSubmit={resetOtpSent ? handleResetPassword : handleSendResetOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
+                  {t.login.identifier}
+                </label>
+                <input
+                  type="text"
+                  value={resetIdentifier}
+                  onChange={(e) => setResetIdentifier(e.target.value)}
+                  placeholder={t.login.identifierPlaceholder}
+                  className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 px-4 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
+                />
+              </div>
+
+              {resetOtpSent && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
+                      {t.login.otp}
+                    </label>
+                    <input
+                      type="text"
+                      value={resetOtp}
+                      onChange={(e) => setResetOtp(e.target.value)}
+                      placeholder={t.login.otpPlaceholder}
+                      className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 px-4 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all tracking-[0.4em] text-center"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
+                      {t.login.newPassword}
+                    </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      placeholder={t.login.newPasswordPlaceholder}
+                      className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 px-4 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold tracking-wider text-valorant-gold uppercase mb-2">
+                      {t.login.confirmNewPassword}
+                    </label>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={resetConfirmPassword}
+                      onChange={(e) => setResetConfirmPassword(e.target.value)}
+                      placeholder={t.login.newPasswordPlaceholder}
+                      className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 px-4 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
+                    />
+                  </div>
+                </>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetLoading || !resetIdentifier.trim()}
+                className="w-full bg-valorant-dark hover:bg-valorant-dark-hover active:scale-[0.98] text-white font-bold py-3 rounded-lg border border-white/10 tracking-wider uppercase text-sm transition-all flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {resetLoading
+                  ? t.login.processing
+                  : resetOtpSent
+                    ? t.login.resetPassword
+                    : t.login.sendOtp}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Register Link - only show if not in setup mode */}
+        {!isSetup && (
+          <div className="mt-6 text-center">
+            <p className="text-valorant-gray text-sm">
+              {t.login.hasAccount}{' '}
+              <button
+                type="button"
+                onClick={() => window.location.href = '/register'}
+                className="text-valorant-red hover:text-valorant-red-hover font-semibold transition-colors"
+              >
+                {t.login.registerLink}
+              </button>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
