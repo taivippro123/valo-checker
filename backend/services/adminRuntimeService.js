@@ -10,7 +10,9 @@ import { decryptText, encryptText } from '../utils/crypto.js';
 const REAUTH_INTERVAL_MS = 50 * 60 * 1000;
 const SHOP_CRON_EXPRESSION = '1 7 * * *';
 const SHOP_CRON_TIMEZONE = 'Asia/Ho_Chi_Minh';
-const SEQUENTIAL_CHECK_DELAY_MS = 5000;
+const SHOP_CHECK_QUEUE_DELAY_MS = 5000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let jobsStarted = false;
 let reauthTimer = null;
@@ -93,8 +95,9 @@ const applyEncryptedFields = (payload = {}) => {
   return updates;
 };
 
-export const getAccounts = async ({ forceRefresh = false } = {}) => {
-  const docs = await Account.find({}).sort({ createdAt: 1 });
+export const getAccounts = async ({ forceRefresh = false, userId } = {}) => {
+  const filter = userId ? { userId } : {};
+  const docs = await Account.find(filter).sort({ createdAt: 1 });
   return docs.map(decryptAccountDocument);
 };
 
@@ -222,7 +225,7 @@ const performReauth = async (accountId, { source = 'cron' } = {}) => {
       const shouldNotify = !lastNotifyAt || (now - new Date(lastNotifyAt)) > 24 * 60 * 60 * 1000;
       
       if (shouldNotify) {
-        const message = `cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`;
+        const message = `Cookie hết hạn cho tài khoản ${account.name}, cần đăng nhập lại`;
         if (account.ntfyTopicUrl) {
           await notifyNtfy(account.ntfyTopicUrl, message, 'Riot cookie expired');
         }
@@ -368,11 +371,12 @@ export const startAdminAutomation = async () => {
     const accounts = await getAccounts();
     const activeAccounts = accounts.filter(acc => acc.isActive);
 
-    for (const account of activeAccounts) {
-      await performShopCheck(account.id, { source: 'cron' });
-      if (activeAccounts.indexOf(account) < activeAccounts.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, SEQUENTIAL_CHECK_DELAY_MS));
+    for (const [index, account] of activeAccounts.entries()) {
+      if (index > 0) {
+        await sleep(SHOP_CHECK_QUEUE_DELAY_MS);
       }
+
+      await performShopCheck(account.id, { source: 'cron' });
     }
   }, {
     timezone: SHOP_CRON_TIMEZONE
@@ -408,6 +412,31 @@ export const getAutomationStatus = async () => {
 
 export const getWishlistItems = async (accountId) => {
   return WishlistItem.find({ accountId }).sort({ addedAt: -1, createdAt: -1 }).lean();
+};
+
+export const addToWishlistItems = async (accountId, items = []) => {
+  const cleaned = (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      accountId,
+      skinUuid: String(item.skinUuid || '').trim(),
+      skinName: String(item.skinName || '').trim()
+    }))
+    .filter((item) => item.skinUuid && item.skinName);
+
+  const result = [];
+  for (const item of cleaned) {
+    const doc = await WishlistItem.findOneAndUpdate(
+      { accountId, skinUuid: item.skinUuid },
+      {
+        $set: { skinName: item.skinName },
+        $setOnInsert: { addedAt: new Date() }
+      },
+      { new: true, upsert: true }
+    );
+    if (doc) result.push(doc);
+  }
+
+  return result;
 };
 
 export const replaceWishlistItems = async (accountId, items = []) => {

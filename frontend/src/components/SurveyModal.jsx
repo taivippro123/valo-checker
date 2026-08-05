@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { X, Send } from "lucide-react";
 
-const ENABLE_SURVEY = true; // Toggle this to enable/disable survey
+const ENABLE_SURVEY = false; // Toggle this to enable/disable survey
 
 const SurveyModal = ({ API_URL }) => {
   const [showModal, setShowModal] = useState(false);

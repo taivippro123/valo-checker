@@ -2,15 +2,56 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
+  fullName: {
+    type: String,
+    required: true,
+    trim: true
+  },
   username: {
     type: String,
     required: true,
     unique: true,
-    trim: true
+    trim: true,
+    minlength: 3,
+    maxlength: 20
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
   },
   password: {
     type: String,
-    required: true
+    required: true,
+    minlength: 6
+  },
+  passwordResetOtpHash: {
+    type: String,
+    default: ''
+  },
+  passwordResetOtpExpiresAt: {
+    type: Date,
+    default: null
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'user'],
+    default: 'user'
+  },
+  isPremium: {
+    type: Boolean,
+    default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  language: {
+    type: String,
+    enum: ['en', 'vn'],
+    default: 'vn'
   }
 }, {
   timestamps: true

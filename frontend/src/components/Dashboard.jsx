@@ -4,14 +4,12 @@ import {
   LogOut,
   Terminal,
   Globe,
-  ShieldCheck,
-  Activity,
   ExternalLink,
-  Sparkles,
   RefreshCw,
-  ChevronDown,
-  MessageSquare,
   X,
+  MessageSquare,
+  Activity,
+  Sparkles
 } from "lucide-react";
 import translations from "../i18n";
 import FAQ from "./FAQ";
@@ -19,14 +17,14 @@ import Footer from "./Footer";
 import InventoryPanel from "./InventoryPanel";
 import SurveyModal from "./SurveyModal";
 
-const Dashboard = ({ onLogout, API_URL, username }) => {
+const Dashboard = ({ onLogout, API_URL, username, fullName }) => {
   const [redirectUrl, setRedirectUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [serverHealth, setServerHealth] = useState({
     ok: false,
     message: "Checking...",
   });
-  const [language, setLanguage] = useState("en");
+  const [language, setLanguage] = useState("vn");
   const [storefront, setStorefront] = useState(null);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("store");
@@ -45,6 +43,11 @@ const Dashboard = ({ onLogout, API_URL, username }) => {
   const [contactMessage, setContactMessage] = useState('');
   const [contactError, setContactError] = useState('');
   const t = translations[language] || translations.vn;
+
+  // Check if user is logged in
+  const isLoggedIn = !!localStorage.getItem('token');
+  const userRole = localStorage.getItem('userRole') || 'user';
+  const displayName = localStorage.getItem('fullName') || fullName || localStorage.getItem('username') || username;
 
   const checkHealth = async () => {
     try {
@@ -574,6 +577,21 @@ try {
               >
                 VN
               </button>
+              {isLoggedIn ? (
+                <button
+                  onClick={() => window.location.href = userRole === 'admin' ? '/admin' : '/user'}
+                  className="px-3 py-1 rounded border border-white/10 text-white font-semibold"
+                >
+                  {displayName}
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.location.href = "/login"}
+                  className="px-2 py-1 rounded border  border-white/10 text-white"
+                >
+                  {language === 'vn' ? 'Đăng nhập' : 'Login'}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -1,26 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Check, LogOut, Plus, RefreshCw, Search, Trash2, Edit, UserPlus } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Shield, Mail, Calendar, Terminal } from 'lucide-react';
 
 const AdminLogs = ({ API_URL, username, onLogout }) => {
   const isSystemAdmin = (username || '').trim().toLowerCase() === 'admin';
-  const [activeTab, setActiveTab] = useState('accounts');
-  const [selectedAccountId, setSelectedAccountId] = useState(null);
-  const [accounts, setAccounts] = useState([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [accountsError, setAccountsError] = useState('');
-  const [showAccountForm, setShowAccountForm] = useState(false);
-  const [editingAccountId, setEditingAccountId] = useState(null);
-  const [accountForm, setAccountForm] = useState({
-    name: '',
-    redirectUrl: '',
-    riotCookies: '',
-    ntfyTopicUrl: '',
-    discordWebhookUrl: ''
-  });
-  const [accountFormSaving, setAccountFormSaving] = useState(false);
-  const [accountFormMessage, setAccountFormMessage] = useState('');
-  const [accountFormError, setAccountFormError] = useState('');
+  const [activeTab, setActiveTab] = useState('logs');
 
   const [logs, setLogs] = useState([]);
   const [page, setPage] = useState(1);
@@ -28,38 +12,16 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState('');
 
-  const [skinsLoading, setSkinsLoading] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [wishlistSaving, setWishlistSaving] = useState(false);
-  const [wishlistError, setWishlistError] = useState('');
-  const [wishlistMessage, setWishlistMessage] = useState('');
-  const [skins, setSkins] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSkinUuids, setSelectedSkinUuids] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserDetails, setSelectedUserDetails] = useState(null);
+  const [selectedUserDetailsLoading, setSelectedUserDetailsLoading] = useState(false);
 
   const authHeaders = () => ({
     Authorization: `Bearer ${localStorage.getItem('token') || ''}`
   });
-
-  const fetchAccounts = async () => {
-    setAccountsLoading(true);
-    setAccountsError('');
-    try {
-      const res = await axios.get(`${API_URL}/api/admin/accounts`, {
-        headers: authHeaders()
-      });
-      setAccounts(Array.isArray(res.data?.accounts) ? res.data.accounts : []);
-      if (!selectedAccountId && res.data?.accounts?.length > 0) {
-        setSelectedAccountId(res.data.accounts[0].id);
-      }
-    } catch (err) {
-      setAccounts([]);
-      setAccountsError(err.response?.data?.message || 'Không tải được danh sách tài khoản.');
-    } finally {
-      setAccountsLoading(false);
-    }
-  };
 
   const fetchLogs = async (nextPage = 1) => {
     setLogsLoading(true);
@@ -79,111 +41,61 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     }
   };
 
-  const handleCreateAccount = async () => {
-    setAccountFormSaving(true);
-    setAccountFormMessage('');
-    setAccountFormError('');
-
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    setUsersError('');
     try {
-      if (editingAccountId) {
-        // Update existing account
-        const res = await axios.put(`${API_URL}/api/admin/accounts/${editingAccountId}`, accountForm, {
-          headers: authHeaders()
-        });
-        setAccountFormMessage('Tài khoản đã cập nhật thành công.');
-      } else {
-        // Create new account
-        const res = await axios.post(`${API_URL}/api/admin/accounts`, accountForm, {
-          headers: authHeaders()
-        });
-        setAccountFormMessage('Tài khoản đã tạo thành công.');
+      const res = await axios.get(`${API_URL}/api/admin/users`, {
+        headers: authHeaders()
+      });
+      setUsers(Array.isArray(res.data?.users) ? res.data.users : []);
+    } catch (err) {
+      setUsers([]);
+      setUsersError(err.response?.data?.message || 'Unable to load users.');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const fetchUserDetails = async (userId) => {
+    setSelectedUserDetailsLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/admin/users/${userId}`, {
+        headers: authHeaders()
+      });
+      setSelectedUserDetails(res.data.user);
+    } catch (err) {
+      setSelectedUserDetails(null);
+    } finally {
+      setSelectedUserDetailsLoading(false);
+    }
+  };
+
+  const handleBanUser = async (userId) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/users/${userId}/ban`, {}, {
+        headers: authHeaders()
+      });
+      await fetchUsers();
+      if (selectedUserId === userId) {
+        await fetchUserDetails(userId);
       }
-      setShowAccountForm(false);
-      setEditingAccountId(null);
-      setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '', discordWebhookUrl: '' });
-      await fetchAccounts();
     } catch (err) {
-      setAccountFormError(err.response?.data?.message || editingAccountId ? 'Không cập nhật được tài khoản.' : 'Không tạo được tài khoản.');
-    } finally {
-      setAccountFormSaving(false);
+      console.error('Failed to ban user:', err);
     }
   };
 
-  const handleEditAccount = (account) => {
-    setEditingAccountId(account.id);
-    setAccountForm({
-      name: account.name || '',
-      redirectUrl: account.redirectUrl || '',
-      riotCookies: account.riotCookies || '',
-      ntfyTopicUrl: account.ntfyTopicUrl || '',
-      discordWebhookUrl: account.discordWebhookUrl || ''
-    });
-    setShowAccountForm(true);
-  };
-
-  const handleViewWishlist = (accountId) => {
-    setSelectedAccountId(accountId);
-    setActiveTab('wishlist');
-  };
-
-  const handleDeleteAccount = async (accountId) => {
-    if (!confirm('Bạn có chắc muốn xóa tài khoản này?')) return;
+  const handleUnbanUser = async (userId) => {
     try {
-      await axios.delete(`${API_URL}/api/admin/accounts/${accountId}`, {
+      await axios.put(`${API_URL}/api/admin/users/${userId}/unban`, {}, {
         headers: authHeaders()
       });
-      if (selectedAccountId === accountId) {
-        setSelectedAccountId(null);
+      await fetchUsers();
+      if (selectedUserId === userId) {
+        await fetchUserDetails(userId);
       }
-      await fetchAccounts();
     } catch (err) {
-      setAccountsError(err.response?.data?.message || 'Không xóa được tài khoản.');
-    }
-  };
-
-  const handleToggleAccountActive = async (accountId, isActive) => {
-    try {
-      await axios.put(`${API_URL}/api/admin/accounts/${accountId}`, { isActive }, {
-        headers: authHeaders()
-      });
-      await fetchAccounts();
-    } catch (err) {
-      setAccountsError(err.response?.data?.message || 'Không cập nhật được tài khoản.');
-    }
-  };
-
-  const fetchSkins = async () => {
-    // Use cached skins if already loaded
-    if (skins.length > 0) {
-      return;
-    }
-    
-    setSkinsLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/api/skins`);
-      setSkins(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      setSkins([]);
-    } finally {
-      setSkinsLoading(false);
-    }
-  };
-
-  const fetchWishlist = async () => {
-    if (!selectedAccountId) return;
-    setWishlistLoading(true);
-    setWishlistError('');
-    try {
-      const res = await axios.get(`${API_URL}/api/admin/wishlist?accountId=${selectedAccountId}`, {
-        headers: authHeaders()
-      });
-      const items = Array.isArray(res.data?.wishlist) ? res.data.wishlist : [];
-      setWishlist(items);
-      setSelectedSkinUuids(items.map((item) => item.skinUuid));
-    } catch (err) {
-      setWishlistError(err.response?.data?.message || 'Không tải được wishlist.');
-    } finally {
-      setWishlistLoading(false);
+      console.error('Failed to unban user:', err);
     }
   };
 
@@ -192,284 +104,16 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   }, [API_URL]);
 
   useEffect(() => {
-    if (isSystemAdmin) {
-      fetchAccounts();
+    if (activeTab === 'users') {
+      fetchUsers();
     }
-  }, [isSystemAdmin]);
+  }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === 'wishlist' && selectedAccountId && isSystemAdmin) {
-      fetchSkins();
-      fetchWishlist();
+    if (selectedUserId) {
+      fetchUserDetails(selectedUserId);
     }
-  }, [activeTab, selectedAccountId, isSystemAdmin]);
-
-  const filteredSkins = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return skins;
-    }
-
-    return skins.filter((skin) => {
-      const name = (skin.displayName || '').toLowerCase();
-      return name.includes(term);
-    });
-  }, [skins, searchTerm]);
-
-  const syncWishlistState = (nextSelected) => {
-    const selectedSet = new Set(nextSelected);
-    setSelectedSkinUuids(nextSelected);
-    setWishlist((current) => current.filter((item) => selectedSet.has(item.skinUuid)));
-  };
-
-  const handleSaveWishlist = async () => {
-    if (!selectedAccountId) return;
-    setWishlistSaving(true);
-    setWishlistMessage('');
-    setWishlistError('');
-
-    try {
-      const items = selectedSkinUuids
-        .map((skinUuid) => {
-          const skin = skins.find((entry) => (entry.levelUuid || entry.uuid) === skinUuid);
-          if (!skin) return null;
-
-          return {
-            skinUuid,
-            skinName: skin.displayName || 'Unknown Skin'
-          };
-        })
-        .filter(Boolean);
-
-      const res = await axios.put(`${API_URL}/api/admin/wishlist`, { accountId: selectedAccountId, items }, {
-        headers: authHeaders()
-      });
-
-      const nextWishlist = Array.isArray(res.data?.wishlist) ? res.data.wishlist : [];
-      setWishlist(nextWishlist);
-      setWishlistMessage('Đã lưu wishlist.');
-    } catch (err) {
-      setWishlistError(err.response?.data?.message || 'Không lưu được wishlist.');
-    } finally {
-      setWishlistSaving(false);
-    }
-  };
-
-  const toggleSkin = (skin) => {
-    const skinUuid = skin.levelUuid || skin.uuid;
-    const nextSelected = selectedSkinUuids.includes(skinUuid)
-      ? selectedSkinUuids.filter((value) => value !== skinUuid)
-      : [...selectedSkinUuids, skinUuid];
-
-    syncWishlistState(nextSelected);
-  };
-
-  const removeFromWishlist = async (skinUuid) => {
-    if (!selectedAccountId) return;
-    try {
-      await axios.delete(`${API_URL}/api/admin/wishlist/${encodeURIComponent(skinUuid)}?accountId=${selectedAccountId}`, {
-        headers: authHeaders()
-      });
-      const nextSelected = selectedSkinUuids.filter((value) => value !== skinUuid);
-      syncWishlistState(nextSelected);
-      setWishlist((current) => current.filter((item) => item.skinUuid !== skinUuid));
-    } catch (err) {
-      setWishlistError(err.response?.data?.message || 'Không xoá được skin khỏi wishlist.');
-    }
-  };
-
-  const triggerReauthNow = async (accountId) => {
-    setAccountFormMessage('');
-    setAccountFormError('');
-    try {
-      const res = await axios.post(`${API_URL}/api/admin/automation/reauth-now`, { accountId }, { headers: authHeaders() });
-      const result = res.data?.result || {};
-      setAccountFormMessage(result.ok ? 'Reauth đã chạy. Kiểm tra trạng thái bên dưới.' : `Reauth thất bại: ${result.reason || 'unknown'}`);
-      await fetchAccounts();
-    } catch (err) {
-      setAccountFormError(err.response?.data?.message || 'Không chạy được reauth ngay.');
-    }
-  };
-
-  const triggerShopNow = async (accountId) => {
-    setAccountFormMessage('');
-    setAccountFormError('');
-    try {
-      const res = await axios.post(`${API_URL}/api/admin/automation/shop-now`, { accountId }, { headers: authHeaders() });
-      const result = res.data?.result || {};
-      setAccountFormMessage(result.ok ? 'Shop check đã chạy. Kiểm tra ntfy topic.' : `Shop check thất bại: ${result.reason || 'unknown'}`);
-      await fetchAccounts();
-    } catch (err) {
-      setAccountFormError(err.response?.data?.message || 'Không chạy được shop check ngay.');
-    }
-  };
-
-  const renderAccountsTab = () => (
-    <div className="space-y-4">
-      {accountsError ? <div className="text-valorant-red text-sm">{accountsError}</div> : null}
-      {accountFormMessage ? <div className="text-emerald-400 text-sm">{accountFormMessage}</div> : null}
-      {accountFormError ? <div className="text-valorant-red text-sm">{accountFormError}</div> : null}
-
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Danh sách tài khoản</h3>
-        <button
-          type="button"
-          onClick={() => setShowAccountForm(true)}
-          className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg"
-        >
-          <UserPlus className="w-4 h-4" /> Tạo tài khoản
-        </button>
-      </div>
-
-      {showAccountForm && (
-        <div className="glass-panel rounded-xl border border-white/5 p-4 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">
-            {editingAccountId ? 'Chỉnh sửa tài khoản' : 'Tạo tài khoản mới'}
-          </h3>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Tên tài khoản</label>
-            <input
-              value={accountForm.name}
-              onChange={(e) => setAccountForm((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-              placeholder="Nhập tên để phân biệt tài khoản"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">redirectUrl</label>
-            <input
-              value={accountForm.redirectUrl}
-              onChange={(e) => setAccountForm((prev) => ({ ...prev, redirectUrl: e.target.value }))}
-              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-              placeholder="https://playvalorant.com/..."
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">ntfyTopicUrl</label>
-            <input
-              value={accountForm.ntfyTopicUrl}
-              onChange={(e) => setAccountForm((prev) => ({ ...prev, ntfyTopicUrl: e.target.value }))}
-              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-              placeholder="https://ntfy.sh/your-topic"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">discordWebhookUrl</label>
-            <input
-              value={accountForm.discordWebhookUrl}
-              onChange={(e) => setAccountForm((prev) => ({ ...prev, discordWebhookUrl: e.target.value }))}
-              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-              placeholder="https://discord.com/api/webhooks/..."
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">riotCookies</label>
-            <textarea
-              value={accountForm.riotCookies}
-              onChange={(e) => setAccountForm((prev) => ({ ...prev, riotCookies: e.target.value }))}
-              rows={5}
-              className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red resize-y"
-              placeholder="ssid=...; clid=...; csid=...; tdid=..."
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleCreateAccount}
-              disabled={accountFormSaving}
-              className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" /> {accountFormSaving ? 'Saving...' : (editingAccountId ? 'Cập nhật' : 'Lưu')}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowAccountForm(false); setEditingAccountId(null); setAccountForm({ name: '', redirectUrl: '', riotCookies: '', ntfyTopicUrl: '' }); }}
-              className="px-4 py-2 rounded-lg border border-white/10 text-sm text-white hover:border-valorant-red/40"
-            >
-              Hủy
-            </button>
-          </div>
-        </div>
-      )}
-
-      {accountsLoading ? (
-        <div className="text-sm text-valorant-gray">Loading...</div>
-      ) : accounts.length === 0 ? (
-        <div className="text-sm text-valorant-gray">Chưa có tài khoản nào.</div>
-      ) : (
-        <div className="space-y-2">
-          {accounts.map((account) => (
-            <div key={account.id} className={`glass-panel rounded-xl border p-4 ${selectedAccountId === account.id ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h4 className="text-base font-bold text-white">{account.name}</h4>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${account.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                      {account.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${account.lastReauthStatus === 'success' ? 'bg-emerald-500/20 text-emerald-400' : account.lastReauthStatus === 'failed' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                      {account.lastReauthStatus || 'No reauth'}
-                    </span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-valorant-gray">
-                    <div>Access token: {account.hasAccessToken ? 'Ready' : 'Empty'}</div>
-                    <div>Entitlement token: {account.hasEntitlementToken ? 'Ready' : 'Empty'}</div>
-                    <div>Token expires: {account.tokenExpiresAt ? new Date(account.tokenExpiresAt).toLocaleString() : '—'}</div>
-                    <div>Last reauth: {account.lastReauthAt ? new Date(account.lastReauthAt).toLocaleString() : '—'}</div>
-                    <div>Last shop check: {account.lastShopCheckAt ? new Date(account.lastShopCheckAt).toLocaleString() : '—'}</div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleViewWishlist(account.id)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-valorant-gold hover:text-white hover:border-valorant-red/40"
-                  >
-                    Xem wishlist
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleAccountActive(account.id, !account.isActive)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
-                  >
-                    {account.isActive ? 'Disable' : 'Enable'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => triggerReauthNow(account.id)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
-                  >
-                    Reauth
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => triggerShopNow(account.id)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
-                  >
-                    Shop Check
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleEditAccount(account)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-white hover:border-valorant-red/40"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAccount(account.id)}
-                    className="px-3 py-2 rounded-lg border border-white/10 text-xs text-valorant-red hover:text-white hover:border-valorant-red/40"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  }, [selectedUserId]);
 
   const renderLogsTab = () => (
     <>
@@ -509,144 +153,165 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     </>
   );
 
-  const renderWishlistTab = () => {
-    if (!selectedAccountId) {
-      return (
-        <div className="text-sm text-valorant-gray">
-          Vui lòng chọn tài khoản từ tab "Tài khoản" trước.
-        </div>
-      );
-    }
+  const renderUsersTab = () => (
+    <div className="space-y-4">
+      {usersError ? <div className="text-valorant-red text-sm">{usersError}</div> : null}
 
-    const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Danh sách Users</h3>
+        <button
+          type="button"
+          onClick={fetchUsers}
+          className="inline-flex items-center gap-2 bg-valorant-dark hover:bg-valorant-dark-hover text-white font-bold px-4 py-2 rounded-lg border border-white/10"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh
+        </button>
+      </div>
 
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Wishlist cho tài khoản: {selectedAccount?.name || 'Unknown'}</h3>
-            <p className="text-xs text-valorant-gray">Danh sách skin yêu thích sẽ được so sánh với shop hằng ngày của tài khoản này.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="glass-panel rounded-xl border border-white/5 p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Danh sách skin</h3>
-                <p className="text-xs text-valorant-gray">Tìm và chọn nhiều skin để lưu wishlist.</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleSaveWishlist}
-                disabled={wishlistSaving}
-                className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
-              >
-                <Plus className="w-4 h-4" /> {wishlistSaving ? 'Saving...' : 'Lưu Wishlist'}
-              </button>
-            </div>
-
-            <div className="relative">
-              <Search className="w-4 h-4 text-valorant-gray absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-valorant-dark border border-white/10 rounded-lg pl-10 pr-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-                placeholder="Tìm skin..."
-              />
-            </div>
-
-            {skinsLoading ? (
-              <div className="text-sm text-valorant-gray">Loading skins...</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 max-h-[34rem] overflow-auto pr-1">
-                {filteredSkins.map((skin) => {
-                  const skinUuid = skin.levelUuid || skin.uuid;
-                  const isSelected = selectedSkinUuids.includes(skinUuid);
-
-                  return (
+      {usersLoading ? (
+        <div className="text-center py-8 text-valorant-gray">Loading...</div>
+      ) : users.length === 0 ? (
+        <div className="text-center py-8 text-valorant-gray">No users found</div>
+      ) : (
+        <div className="space-y-2">
+          {users.map((user) => (
+            <div
+              key={user.id}
+              className={`glass-panel rounded-lg p-4 border cursor-pointer transition-all ${
+                selectedUserId === user.id ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 hover:border-white/10'
+              }`}
+              onClick={() => setSelectedUserId(user.id)}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-white">{user.fullName}</h4>
+                    {user.role === 'admin' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-valorant-red/20 text-valorant-red text-xs font-semibold">
+                        <Shield className="w-3 h-3" /> Admin
+                      </span>
+                    )}
+                    {user.isPremium && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-valorant-gold/20 text-valorant-gold text-xs font-semibold">
+                        Premium
+                      </span>
+                    )}
+                    {!user.isActive && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-valorant-red/20 text-valorant-red text-xs font-semibold">
+                        Banned
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-sm text-valorant-gray">
+                    <span className="flex items-center gap-1">
+                      <Terminal className="w-3 h-3" /> {user.username}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3 h-3" /> {user.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-xs text-valorant-gray">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {user.accountCount} accounts
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {user.role !== 'admin' && (
                     <button
-                      key={skinUuid}
                       type="button"
-                      onClick={() => toggleSkin(skin)}
-                      className={`flex items-center gap-3 text-left rounded-xl border p-3 transition-colors ${isSelected ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 bg-black/10 hover:border-white/10 hover:bg-white/5'}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        user.isActive ? handleBanUser(user.id) : handleUnbanUser(user.id);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                        user.isActive 
+                          ? 'border-valorant-red/20 text-valorant-red hover:bg-valorant-red/10' 
+                          : 'border-emerald-400/20 text-emerald-400 hover:bg-emerald-400/10'
+                      }`}
                     >
-                      <div className="h-14 w-14 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center">
-                        {skin.displayIcon ? <img src={skin.displayIcon} alt={skin.displayName} className="h-full w-full object-contain" /> : <span className="text-[10px] text-valorant-gray">N/A</span>}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-white break-words">{skin.displayName}</div>
-                        <div className="text-[11px] text-valorant-gray break-all">{skinUuid}</div>
-                      </div>
-                      <div className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-valorant-red bg-valorant-red text-white' : 'border-white/20 text-transparent'}`}>
-                        <Check className="w-3 h-3" />
-                      </div>
+                      {user.isActive ? 'Ban' : 'Unban'}
                     </button>
-                  );
-                })}
+                  )}
+                  {user.accounts.some(acc => acc.hasNotifications) && (
+                    <div className="text-emerald-400 text-xs">Has notifications</div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="glass-panel rounded-xl border border-white/5 p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Wishlist</h3>
-              <p className="text-xs text-valorant-gray">Danh sách skin đã lưu sẽ được so sánh với shop hằng ngày.</p>
             </div>
+          ))}
+        </div>
+      )}
 
-            {wishlistLoading ? (
-              <div className="text-sm text-valorant-gray">Loading wishlist...</div>
-            ) : wishlist.length === 0 ? (
-              <div className="text-sm text-valorant-gray">Chưa có skin nào trong wishlist.</div>
-            ) : (
-              <div className="space-y-2 max-h-[34rem] overflow-auto pr-1">
-                {wishlist.map((item) => {
-  // Tìm thông tin skin chi tiết trong mảng skins
-  const matchedSkin = skins.find(
-    (skin) => (skin.levelUuid || skin.uuid) === item.skinUuid
-  );
-  const displayIcon = matchedSkin?.displayIcon;
+      {selectedUserId && (
+        <div className="glass-panel rounded-xl border border-white/5 p-4 mt-4">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold mb-4">User Details</h3>
+          
+          {selectedUserDetailsLoading ? (
+            <div className="text-center py-4 text-valorant-gray">Loading...</div>
+          ) : selectedUserDetails ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Full Name</label>
+                  <p className="text-white">{selectedUserDetails.fullName}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Username</label>
+                  <p className="text-white">{selectedUserDetails.username}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Email</label>
+                  <p className="text-white">{selectedUserDetails.email}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Role</label>
+                  <p className={selectedUserDetails.role === 'admin' ? 'text-valorant-red' : 'text-white'}>
+                    {selectedUserDetails.role}
+                  </p>
+                </div>
+              </div>
 
-  return (
-    <div key={item.skinUuid} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
-      {/* Khung hiển thị ảnh skin */}
-      <div className="h-12 w-12 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center p-1">
-        {displayIcon ? (
-          <img 
-            src={displayIcon} 
-            alt={item.skinName} 
-            className="h-full w-full object-contain" 
-          />
-        ) : (
-          <span className="text-[10px] text-valorant-gray">N/A</span>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-white break-words">{item.skinName}</div>
-        <div className="text-[11px] text-valorant-gray break-all">{item.skinUuid}</div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => removeFromWishlist(item.skinUuid)}
-        className="px-3 py-1.5 rounded-lg border border-white/10 text-xs text-valorant-gold hover:text-white hover:border-valorant-red/40"
-      >
-        Xóa
-      </button>
+              <div className="border-t border-white/10 pt-4">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-valorant-gold mb-3">Connected Game Accounts ({selectedUserDetails.accounts.length})</h4>
+                {selectedUserDetails.accounts.length === 0 ? (
+                  <div className="text-sm text-valorant-gray">No game accounts connected</div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedUserDetails.accounts.map((acc) => (
+                      <div key={acc.id} className="bg-valorant-dark/50 rounded-lg p-3 border border-white/5">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-semibold text-white">{acc.name}</h5>
+                            <p className="text-xs text-valorant-gray">{acc.shard?.toUpperCase() || 'AP'}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            {acc.isActive ? (
+                              <span className="text-emerald-400 text-xs">Active</span>
+                            ) : (
+                              <span className="text-valorant-red text-xs">Inactive</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-valorant-gray">
+                          {acc.ntfyTopicUrl && <div>Ntfy: configured</div>}
+                          {acc.discordWebhookUrl && <div>Discord: configured</div>}
+                          {!acc.ntfyTopicUrl && !acc.discordWebhookUrl && <div>No notifications configured</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
-})}
-              </div>
-            )}
-
-            {wishlistMessage ? <div className="text-emerald-400 text-sm">{wishlistMessage}</div> : null}
-            {wishlistError ? <div className="text-valorant-red text-sm">{wishlistError}</div> : null}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-valorant-darker text-white p-6">
@@ -673,17 +338,16 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
           {isSystemAdmin ? (
             <button
               type="button"
-              onClick={() => setActiveTab('accounts')}
-              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'accounts' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'users' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
             >
-              Tài khoản
+              Users
             </button>
           ) : null}
         </div>
 
         {activeTab === 'logs' ? renderLogsTab() : null}
-        {activeTab === 'accounts' && isSystemAdmin ? renderAccountsTab() : null}
-        {activeTab === 'wishlist' && isSystemAdmin ? renderWishlistTab() : null}
+        {activeTab === 'users' && isSystemAdmin ? renderUsersTab() : null}
       </div>
     </div>
   );
