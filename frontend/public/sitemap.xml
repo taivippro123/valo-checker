@@ -5,4 +5,9 @@
     <priority>1.00</priority>
     <changefreq>daily</changefreq>
   </url>
+  <url>
+    <loc>https://valocheck.vercel.app/guide</loc>
+    <priority>0.80</priority>
+    <changefreq>monthly</changefreq>
+  </url>
 </urlset>

@@ -34,6 +34,17 @@ This repository contains:
    - Accessory Store
 6. After a successful request, the backend stores a log containing the Riot ID and timestamp for the admin dashboard.
 
+## 🎯 Features
+
+- **Daily Store Monitoring**: Automatically checks and displays daily Valorant store items
+- **Wishlist System**: Add skins to your wishlist and get notified when they appear in the shop
+- **Discord Webhook Integration**: Configure Discord webhooks to receive notifications when wishlist skins are available
+- **Ntfy.sh Push Notifications**: Set up Ntfy topics for mobile push notifications
+- **Daily Discord Skin List**: Automatically sends daily skin lists to configured Discord channels
+- **Multi-language Support**: Available in English and Vietnamese
+- **Admin Dashboard**: View user logs and manage accounts
+- **Secure Authentication**: JWT-based auth with encrypted data storage
+
 ---
 
 ## 🚀 Setup
@@ -130,6 +141,17 @@ Repository gồm hai phần:
    - Chợ đêm (Night Market)
    - Cửa hàng phụ kiện (Accessory Store)
 6. Sau khi lấy dữ liệu thành công, backend sẽ lưu Riot ID và thời gian truy cập để hiển thị trên trang quản trị.
+
+## 🎯 Tính năng
+
+- **Giám sát cửa hàng hàng ngày**: Tự động kiểm tra và hiển thị các vật phẩm cửa hàng Valorant hàng ngày
+- **Hệ thống Wishlist**: Thêm skin vào danh sách mong muốn và nhận thông báo khi xuất hiện trong shop
+- **Tích hợp Discord Webhook**: Cấu hình webhook Discord để nhận thông báo khi có skin trong wishlist
+- **Thông báo đẩy Ntfy.sh**: Thiết lập topic Ntfy để nhận thông báo trên điện thoại
+- **Danh sách skin hàng ngày trên Discord**: Tự động gửi danh sách skin hàng ngày vào kênh Discord đã cấu hình
+- **Hỗ trợ đa ngôn ngữ**: Có sẵn tiếng Anh và tiếng Việt
+- **Dashboard quản trị**: Xem nhật ký người dùng và quản lý tài khoản
+- **Xác thực bảo mật**: Xác thực JWT với lưu trữ dữ liệu mã hóa
 
 ---
 
