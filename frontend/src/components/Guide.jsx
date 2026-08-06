@@ -59,7 +59,7 @@ const Guide = () => {
                 <h3 className="font-semibold text-white mb-2">
                   {t.guide.watchVideo}{" "}
                   <a
-                    href="https://youtu.be/your-video-id"
+                    href="https://youtu.be/13uThlwe5mU"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-valorant-red hover:underline"

@@ -6,7 +6,7 @@ import translations from '../i18n';
 import { toast } from 'sonner';
 
 const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
-  const [language, setLanguage] = useState(localStorage.getItem('language') || 'en');
+  const [language, setLanguage] = useState(localStorage.getItem('language') || 'vn');
   const t = translations[language] || translations.en;
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [selectedAccountTab, setSelectedAccountTab] = useState('details');
@@ -53,7 +53,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       }
     } catch (err) {
       setAccounts([]);
-      setAccountsError(err.response?.data?.message || 'Không tải được danh sách tài khoản.');
+      setAccountsError(err.response?.data?.message || t.accountsLoadError);
     } finally {
       setAccountsLoading(false);
     }
@@ -68,13 +68,13 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
         const res = await axios.put(`${API_URL}/api/user/accounts/${editingAccountId}`, accountForm, {
           headers: authHeaders()
         });
-        toast.success('Tài khoản đã cập nhật thành công.');
+        toast.success(t.successUpdateAccount);
       } else {
         // Create new account
         const res = await axios.post(`${API_URL}/api/user/accounts`, accountForm, {
           headers: authHeaders()
         });
-        toast.success('Tài khoản đã tạo thành công.');
+        toast.success(t.successCreateAccount);
       }
       setShowAccountForm(false);
       setEditingAccountId(null);
@@ -83,9 +83,9 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
     } catch (err) {
       const errorMessage = err.response?.data?.message;
       toast.error(
-        errorMessage === 'Hiện tại bạn chỉ có thể tạo 1 tài khoản' 
-          ? t.accountLimitReached 
-          : (editingAccountId ? 'Không cập nhật được tài khoản.' : 'Không tạo được tài khoản.')
+        errorMessage === 'Hiện tại bạn chỉ có thể tạo 1 tài khoản'
+          ? t.accountLimitReached
+          : (editingAccountId ? t.errorUpdateAccount : t.errorCreateAccount)
       );
     } finally {
       setAccountFormSaving(false);
@@ -126,14 +126,14 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
           }
           await fetchAccounts();
         } catch (err) {
-          throw new Error(err.response?.data?.message || 'Không xóa được tài khoản.');
+          throw new Error(err.response?.data?.message || t.errorDeleteAccount);
         } finally {
           setDeleteLoading(null);
         }
       })(),
       {
-        loading: 'Đang xóa tài khoản...',
-        success: 'Đã xóa tài khoản thành công.',
+        loading: t.deleteAccountLoading,
+        success: t.deleteAccountSuccess,
         error: (err) => err.message
       }
     );
@@ -145,10 +145,10 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       const res = await axios.post(`${API_URL}/api/user/accounts/${accountId}/reauth`, {}, {
         headers: authHeaders()
       });
-      toast.success(res.data?.message || 'Reauth đã chạy thành công.');
+      toast.success(res.data?.message || t.reauthSuccess);
       await fetchAccounts();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không chạy được reauth.');
+      toast.error(err.response?.data?.message || t.reauthError);
     } finally {
       setReauthLoading(null);
     }
@@ -160,10 +160,10 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       const res = await axios.post(`${API_URL}/api/user/accounts/${accountId}/check-shop`, {}, {
         headers: authHeaders()
       });
-      toast.success(res.data?.message || 'Shop check đã chạy thành công.');
+      toast.success(res.data?.message || t.shopCheckSuccess);
       await fetchAccounts();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không chạy được shop check.');
+      toast.error(err.response?.data?.message || t.shopCheckError);
     } finally {
       setShopCheckLoading(null);
     }
@@ -181,7 +181,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       setSkins(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setSkins([]);
-      toast.error(err.response?.data?.message || 'Không tải được danh sách skin.');
+      toast.error(err.response?.data?.message || t.skinsLoadError);
     } finally {
       setSkinsLoading(false);
     }
@@ -198,7 +198,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       setWishlist(Array.isArray(res.data?.wishlist) ? res.data.wishlist : []);
     } catch (err) {
       setWishlist([]);
-      toast.error(err.response?.data?.message || 'Không tải được wishlist.');
+      toast.error(err.response?.data?.message || t.wishlistLoadError);
     } finally {
       setWishlistLoading(false);
     }
@@ -215,11 +215,11 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       }, {
         headers: authHeaders()
       });
-      toast.success('Đã thêm skin vào wishlist.');
+      toast.success(t.addWishlistSuccess);
       setSelectedSkinUuids([]);
       await fetchWishlist();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không thêm được skin vào wishlist.');
+      toast.error(err.response?.data?.message || t.addWishlistError);
     } finally {
       setWishlistSaving(false);
     }
@@ -233,10 +233,10 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       await axios.delete(`${API_URL}/api/user/wishlist/${selectedAccountId}/${encodeURIComponent(skinUuid)}`, {
         headers: authHeaders()
       });
-      toast.success('Đã xóa skin khỏi wishlist.');
+      toast.success(t.removeWishlistSuccess);
       await fetchWishlist();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không xóa được skin khỏi wishlist.');
+      toast.error(err.response?.data?.message || t.removeWishlistError);
     } finally {
       setWishlistRemoving(null);
     }
@@ -280,32 +280,32 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
   const renderAccountsList = () => (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Tài khoản của bạn</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">{t.yourAccounts}</h3>
         <button
           type="button"
           onClick={handleShowCreateForm}
           className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg"
         >
-          <UserPlus className="w-4 h-4" /> Tạo tài khoản
+          <UserPlus className="w-4 h-4" /> {t.createAccount}
         </button>
       </div>
 
       {showAccountForm && (
         <div className="glass-panel rounded-xl border border-white/5 p-4 space-y-4">
           <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">
-            {editingAccountId ? 'Chỉnh sửa tài khoản' : 'Tạo tài khoản mới'}
+            {editingAccountId ? t.editAccount : t.createAccount}
           </h3>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Tên tài khoản</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">{t.accountNameLabel}</label>
             <input
               value={accountForm.name}
               onChange={(e) => setAccountForm((prev) => ({ ...prev, name: e.target.value }))}
               className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-              placeholder="Nhập tên để phân biệt tài khoản"
+              placeholder=""
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Redirect URL</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">{t.riotRedirectLabel}</label>
             <input
               value={accountForm.redirectUrl}
               onChange={(e) => setAccountForm((prev) => ({ ...prev, redirectUrl: e.target.value }))}
@@ -314,7 +314,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">NTFY Topic URL</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">{t.ntfyTopicLabel}</label>
             <input
               value={accountForm.ntfyTopicUrl}
               onChange={(e) => setAccountForm((prev) => ({ ...prev, ntfyTopicUrl: e.target.value }))}
@@ -323,7 +323,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Discord Webhook URL</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">{t.discordWebhookLabel}</label>
             <input
               value={accountForm.discordWebhookUrl}
               onChange={(e) => setAccountForm((prev) => ({ ...prev, discordWebhookUrl: e.target.value }))}
@@ -332,7 +332,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">Riot Cookies</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gold mb-2">{t.riotCookiesLabel}</label>
             <textarea
               value={accountForm.riotCookies}
               onChange={(e) => setAccountForm((prev) => ({ ...prev, riotCookies: e.target.value }))}
@@ -348,7 +348,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
               disabled={accountFormSaving}
               className="inline-flex items-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
             >
-              <Check className="w-4 h-4" /> {accountFormSaving ? 'Saving...' : (editingAccountId ? 'Cập nhật' : 'Lưu')}
+              <Check className="w-4 h-4" /> {accountFormSaving ? t.saving : (editingAccountId ? t.update : t.save)}
             </button>
             <button
               type="button"
@@ -359,31 +359,30 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
               }}
               className="inline-flex items-center gap-2 bg-valorant-dark hover:bg-valorant-dark-hover text-white font-bold px-4 py-2 rounded-lg border border-white/10"
             >
-              Hủy
+              {t.cancel}
             </button>
           </div>
         </div>
       )}
 
       {accountsLoading ? (
-        <div className="text-center py-8 text-valorant-gray">Đang tải...</div>
+        <div className="text-center py-8 text-valorant-gray">{t.loading}</div>
       ) : accounts.length === 0 ? (
-        <div className="text-center py-8 text-valorant-gray">Chưa có tài khoản nào</div>
+        <div className="text-center py-8 text-valorant-gray">{t.noAccountsTitle}</div>
       ) : (
         <div className="space-y-2">
           {accounts.map((account) => (
             <div
               key={account.id}
-              className={`glass-panel rounded-lg p-4 border cursor-pointer transition-all ${
-                selectedAccountId === account.id ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 hover:border-white/10'
-              }`}
+              className={`glass-panel rounded-lg p-4 border cursor-pointer transition-all ${selectedAccountId === account.id ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 hover:border-white/10'
+                }`}
               onClick={() => setSelectedAccountId(account.id)}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                 <div className="min-w-0">
                   <h4 className="font-bold text-white">{account.name}</h4>
                   <p className="text-xs text-valorant-gray mt-1">
-                    {account.shard?.toUpperCase() || 'AP'} • {account.isActive ? 'Active' : 'Inactive'}
+                    {account.shard?.toUpperCase() || 'AP'} • {account.isActive ? t.active : t.inactive}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
@@ -398,10 +397,10 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                   >
                     {reauthLoading === account.id ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin" /> Loading...
+                        <RefreshCw className="w-3 h-3 animate-spin" /> {t.loading}
                       </>
                     ) : (
-                      'Reauth'
+                      t.reauth
                     )}
                   </button>
                   <button
@@ -415,10 +414,10 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                   >
                     {shopCheckLoading === account.id ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin" /> Loading...
+                        <RefreshCw className="w-3 h-3 animate-spin" /> {t.loading}
                       </>
                     ) : (
-                      'Check Shop'
+                      t.checkShop
                     )}
                   </button>
                   <button
@@ -467,25 +466,23 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
             <button
               type="button"
               onClick={() => setSelectedAccountTab('details')}
-              className={`w-full sm:flex-1 py-2 px-4 rounded-lg font-bold transition-colors ${
-                selectedAccountTab === 'details' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray hover:text-white'
-              }`}
+              className={`w-full sm:flex-1 py-2 px-4 rounded-lg font-bold transition-colors ${selectedAccountTab === 'details' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray hover:text-white'
+                }`}
             >
-              Chi tiết
+              {t.details}
             </button>
             <button
               type="button"
               onClick={handleOpenWishlist}
-              className={`w-full sm:flex-1 py-2 px-4 rounded-lg font-bold transition-colors flex items-center justify-center gap-2 ${
-                selectedAccountTab === 'wishlist' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray hover:text-white'
-              }`}
+              className={`w-full sm:flex-1 py-2 px-4 rounded-lg font-bold transition-colors flex items-center justify-center gap-2 ${selectedAccountTab === 'wishlist' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray hover:text-white'
+                }`}
             >
               {wishlistLoading && selectedAccountTab === 'wishlist' ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Wishlist
+                  <RefreshCw className="w-4 h-4 animate-spin" /> {t.wishlist}
                 </>
               ) : (
-                'Wishlist'
+                t.wishlist
               )}
             </button>
           </div>
@@ -494,35 +491,35 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Tên</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.accountNameLabel}</label>
                   <p className="text-white">{account.name}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Region</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.regionLabel}</label>
                   <p className="text-white">{account.shard?.toUpperCase() || 'AP'}</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Trạng thái</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.statusLabel}</label>
                   <p className={account.isActive ? 'text-emerald-400' : 'text-valorant-red'}>
-                    {account.isActive ? 'Active' : 'Inactive'}
+                    {account.isActive ? t.active : t.inactive}
                   </p>
                 </div>
               </div>
 
               <div className="border-t border-white/10 pt-4">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Ntfy Topic</label>
-                <p className="text-sm text-valorant-gray break-all">{account.ntfyTopicUrl || 'Not configured'}</p>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.ntfyTopicLabel}</label>
+                <p className="text-sm text-valorant-gray break-all">{account.ntfyTopicUrl || t.notConfigured}</p>
               </div>
 
               <div className="border-t border-white/10 pt-4">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Discord Webhook</label>
-                <p className="text-sm text-valorant-gray break-all">{account.discordWebhookUrl || 'Not configured'}</p>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.discordWebhookLabel}</label>
+                <p className="text-sm text-valorant-gray break-all">{account.discordWebhookUrl || t.notConfigured}</p>
               </div>
 
               <div className="border-t border-white/10 pt-4">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Reauth Status</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.reauthStatusLabel}</label>
                 <p className={`text-sm ${account.lastReauthStatus === 'success' ? 'text-emerald-400' : 'text-valorant-red'}`}>
-                  {account.lastReauthStatus || 'Never'}
+                  {account.lastReauthStatus || t.never}
                 </p>
                 {account.lastReauthError && (
                   <p className="text-xs text-valorant-red mt-1">{account.lastReauthError}</p>
@@ -530,9 +527,9 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
               </div>
 
               <div className="border-t border-white/10 pt-4">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">Shop Check Status</label>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-valorant-gray mb-1">{t.shopCheckStatusLabel}</label>
                 <p className={`text-sm ${account.lastShopCheckStatus === 'success' ? 'text-emerald-400' : 'text-valorant-red'}`}>
-                  {account.lastShopCheckStatus || 'Never'}
+                  {account.lastShopCheckStatus || t.never}
                 </p>
                 {account.lastShopCheckError && (
                   <p className="text-xs text-valorant-red mt-1">{account.lastShopCheckError}</p>
@@ -542,21 +539,21 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
           ) : (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">Wishlist</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">{t.wishlist}</h3>
                 <button
                   type="button"
                   onClick={fetchWishlist}
                   disabled={wishlistLoading}
                   className="inline-flex items-center justify-center gap-2 bg-valorant-dark hover:bg-valorant-dark-hover text-white font-bold px-4 py-2 rounded-lg border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 >
-                  <RefreshCw className={`w-4 h-4 ${wishlistLoading ? 'animate-spin' : ''}`} /> {wishlistLoading ? 'Đang tải...' : 'Làm mới'}
+                  <RefreshCw className={`w-4 h-4 ${wishlistLoading ? 'animate-spin' : ''}`} /> {wishlistLoading ? t.loading : t.refresh}
                 </button>
               </div>
 
               {wishlistLoading ? (
-                <div className="text-center py-8 text-valorant-gray">Đang tải...</div>
+                <div className="text-center py-8 text-valorant-gray">{t.loading}</div>
               ) : wishlist.length === 0 ? (
-                <div className="text-center py-8 text-valorant-gray">Chưa có skin nào trong wishlist</div>
+                <div className="text-center py-8 text-valorant-gray">{t.noWishlist}</div>
               ) : (
                 <div className="space-y-2 max-h-[30rem] overflow-auto pr-1">
                   {wishlist.map((item) => {
@@ -566,14 +563,14 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                     return (
                       <div key={item.skinUuid} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
                         <div className="h-12 w-12 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center p-1">
-                          {displayIcon ? (
-                            <img 
-                              src={displayIcon} 
-                              alt={item.skinName} 
-                              className="h-full w-full object-contain" 
+                            {displayIcon ? (
+                            <img
+                              src={displayIcon}
+                              alt={item.skinName}
+                              className="h-full w-full object-contain"
                             />
                           ) : (
-                            <span className="text-[10px] text-valorant-gray">N/A</span>
+                            <span className="text-[10px] text-valorant-gray">{t.na}</span>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -599,20 +596,20 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
               )}
 
               <div className="border-t border-white/10 pt-4 mt-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-valorant-gold mb-4">Thêm skin vào wishlist</h4>
-                
+                <h4 className="text-sm font-bold uppercase tracking-wider text-valorant-gold mb-4">{t.addToWishlist}</h4>
+
                 <div className="mb-4">
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-valorant-dark border border-white/10 rounded-lg px-3 py-2 text-white placeholder-valorant-gray/50 focus:outline-none focus:border-valorant-red"
-                    placeholder="Tìm kiếm skin..."
+                    placeholder={t.searchSkinsPlaceholder}
                   />
                 </div>
 
                 {skinsLoading ? (
-                  <div className="text-center py-4 text-valorant-gray">Đang tải skins...</div>
+                  <div className="text-center py-4 text-valorant-gray">{t.loading}</div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 max-h-[30rem] overflow-auto pr-1">
                     {filteredSkins.map((skin) => {
@@ -654,7 +651,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                   disabled={wishlistSaving || selectedSkinUuids.length === 0}
                   className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-valorant-red hover:bg-valorant-red-hover text-white font-bold px-4 py-2 rounded-lg disabled:opacity-50"
                 >
-                  <Plus className="w-4 h-4" /> {wishlistSaving ? 'Đang thêm...' : 'Thêm vào wishlist'}
+                  <Plus className="w-4 h-4" /> {wishlistSaving ? t.adding : t.addToWishlist}
                 </button>
               </div>
             </div>
@@ -668,15 +665,27 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
     <div className="min-h-screen bg-gradient-to-br from-valorant-dark to-valorant-black text-white">
       <div className="container mx-auto px-4 py-6 lg:py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 lg:mb-8">
-          <h1 className="text-2xl lg:text-3xl font-bold">VALOCHECK - {fullName || username}</h1>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Link className="py-2 px-4 rounded-lg font-bold transition-colors bg-valorant-red hover:bg-valorant-red-hover text-white text-center" to="/guide" target="_blank" rel="noopener noreferrer">Xem hướng dẫn</Link>
+          <h1 className="text-2xl lg:text-3xl font-bold">{t.brand} - {fullName || username}</h1>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="inline-flex items-center gap-2 mr-2">
+              <button
+                type="button"
+                onClick={() => { setLanguage('vn'); localStorage.setItem('language', 'vn'); }}
+                className={`px-3 py-2 rounded-lg font-bold ${language === 'vn' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray'}`}
+              >VN</button>
+              <button
+                type="button"
+                onClick={() => { setLanguage('en'); localStorage.setItem('language', 'en'); }}
+                className={`px-3 py-2 rounded-lg font-bold ${language === 'en' ? 'bg-valorant-red text-white' : 'bg-valorant-dark text-valorant-gray'}`}
+              >EN</button>
+            </div>
+            <Link className="py-2 px-4 rounded-lg font-bold transition-colors bg-valorant-red hover:bg-valorant-red-hover text-white text-center" to="/guide" target="_blank" rel="noopener noreferrer">{t.viewGuide}</Link>
             <button
               type="button"
               onClick={onLogout}
               className="inline-flex items-center justify-center gap-2 bg-valorant-dark hover:bg-valorant-dark-hover text-white font-bold px-4 py-2 rounded-lg border border-white/10"
             >
-              <LogOut className="w-4 h-4" /> Đăng xuất
+              <LogOut className="w-4 h-4" /> {t.signOut}
             </button>
           </div>
         </div>
@@ -691,7 +700,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
           <div className="lg:col-span-2 order-1 lg:order-2">
             {!selectedAccountId ? (
               <div className="glass-panel rounded-xl border border-white/5 p-4">
-                <div className="text-center py-8 text-valorant-gray">Chọn tài khoản để xem chi tiết</div>
+                <div className="text-center py-8 text-valorant-gray">{t.chooseAccount}</div>
               </div>
             ) : (
               renderAccountDetails()
