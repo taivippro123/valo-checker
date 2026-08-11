@@ -9,7 +9,8 @@ import {
   X,
   MessageSquare,
   Activity,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from "lucide-react";
 import translations from "../i18n";
 import FAQ from "./FAQ";
