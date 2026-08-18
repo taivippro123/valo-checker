@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { LogOut, RefreshCw, Users, Shield, Mail, Calendar, Terminal } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Shield, Mail, Calendar, Terminal, Share2 } from 'lucide-react';
 
 const AdminLogs = ({ API_URL, username, onLogout }) => {
   const isSystemAdmin = (username || '').trim().toLowerCase() === 'admin';
@@ -18,6 +18,10 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserDetails, setSelectedUserDetails] = useState(null);
   const [selectedUserDetailsLoading, setSelectedUserDetailsLoading] = useState(false);
+
+  const [shareData, setShareData] = useState(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState('');
 
   const authHeaders = () => ({
     Authorization: `Bearer ${localStorage.getItem('token') || ''}`
@@ -99,9 +103,29 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     }
   };
 
+  const fetchShareStats = async () => {
+    setShareLoading(true);
+    setShareError('');
+    try {
+      const res = await axios.get(`${API_URL}/api/share/stats?days=14`, { headers: authHeaders() });
+      setShareData(res.data);
+    } catch (error) {
+      setShareError(error.response?.data?.message || 'Khong tai duoc thong ke chia se.');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchLogs(1);
   }, [API_URL]);
+
+  useEffect(() => {
+    if (activeTab === 'share') {
+      fetchShareStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab === 'users') {
@@ -313,6 +337,124 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     </div>
   );
 
+  const renderShareTab = () => {
+    const stats = shareData?.stats || [];
+    const totals = stats.reduce(
+      (acc, row) => ({
+        imagesRendered: acc.imagesRendered + (row.imagesRendered || 0),
+        snapshotsCreated: acc.snapshotsCreated + (row.snapshotsCreated || 0),
+        pageViews: acc.pageViews + (row.pageViews || 0),
+        imageServes: acc.imageServes + (row.imageServes || 0)
+      }),
+      { imagesRendered: 0, snapshotsCreated: 0, pageViews: 0, imageServes: 0 }
+    );
+
+    // Luot mo link / link tao ra: lon hon 1 nghia la vong lan truyen dang chay.
+    const viral = totals.snapshotsCreated
+      ? (totals.pageViews / totals.snapshotsCreated).toFixed(2)
+      : '—';
+
+    const cards = [
+      { label: 'Ảnh đã tạo', value: totals.imagesRendered, hint: 'bấm Tải/Copy ảnh' },
+      { label: 'Link đã tạo', value: totals.snapshotsCreated, hint: 'bấm Tạo link chia sẻ' },
+      { label: 'Lượt mở link', value: totals.pageViews, hint: 'người khác bấm vào link' },
+      { label: 'Hệ số lan', value: viral, hint: 'lượt mở / link tạo' }
+    ];
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-valorant-gray">14 ngày gần nhất (giờ VN)</p>
+          <button
+            type="button"
+            onClick={fetchShareStats}
+            disabled={shareLoading}
+            className="flex items-center gap-2 border border-white/10 hover:border-valorant-red/30 text-valorant-gold hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${shareLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {shareError ? <p className="text-sm text-valorant-red">{shareError}</p> : null}
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {cards.map((card) => (
+            <div key={card.label} className="rounded-xl border border-white/5 bg-valorant-dark p-4">
+              <p className="text-[10px] uppercase tracking-wider text-valorant-gray">{card.label}</p>
+              <p className="mt-1 text-2xl font-black text-white">{card.value}</p>
+              <p className="mt-1 text-[10px] text-valorant-gray">{card.hint}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-white/5 bg-valorant-dark">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-valorant-gray">
+                <th className="px-4 py-3">Ngày</th>
+                <th className="px-4 py-3">Ảnh tạo</th>
+                <th className="px-4 py-3">Link tạo</th>
+                <th className="px-4 py-3">Lượt mở</th>
+                <th className="px-4 py-3">Ảnh phục vụ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.length ? (
+                stats.map((row) => (
+                  <tr key={row.day} className="border-t border-white/5">
+                    <td className="px-4 py-2.5 font-mono text-xs text-valorant-gold">{row.day}</td>
+                    <td className="px-4 py-2.5">{row.imagesRendered}</td>
+                    <td className="px-4 py-2.5">{row.snapshotsCreated}</td>
+                    <td className="px-4 py-2.5">{row.pageViews}</td>
+                    <td className="px-4 py-2.5">{row.imageServes}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs text-valorant-gray">
+                    {shareLoading ? 'Đang tải...' : 'Chưa có lượt chia sẻ nào.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {shareData?.topLinks?.length ? (
+          <div className="rounded-xl border border-white/5 bg-valorant-dark p-4">
+            <h4 className="text-[10px] uppercase tracking-wider text-valorant-gray">Link được xem nhiều nhất</h4>
+            <ul className="mt-3 space-y-1.5">
+              {shareData.topLinks.map((link) => (
+                <li key={link.shortId} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-mono text-valorant-gold">/s/{link.shortId}</span>
+                  <span className="text-valorant-gray">{link.variant}</span>
+                  <span className="font-bold text-white">{link.views} lượt xem</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {shareData?.imageCache?.length ? (
+          <div className="rounded-xl border border-white/5 bg-valorant-dark p-4">
+            <h4 className="text-[10px] uppercase tracking-wider text-valorant-gray">Cache ảnh (RAM server)</h4>
+            <ul className="mt-3 space-y-1.5">
+              {shareData.imageCache.map((cache) => (
+                <li key={cache.name} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                  <span className="font-mono text-valorant-gold">{cache.name}</span>
+                  <span className="text-valorant-gray">{cache.size} mục</span>
+                  <span className="text-valorant-gray">{cache.mb}MB{cache.maxMb ? ` / ${cache.maxMb}MB` : ''}</span>
+                  <span className="text-valorant-gray">hit {Math.round((cache.hitRate || 0) * 100)}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-valorant-darker text-white p-6">
       <div className="max-w-7xl mx-auto space-y-5">
@@ -335,6 +477,14 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
           >
             Logs
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('share')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold uppercase tracking-wider ${activeTab === 'share' ? 'text-valorant-gold border-b-2 border-valorant-red' : 'text-valorant-gray'}`}
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            Share
+          </button>
           {isSystemAdmin ? (
             <button
               type="button"
@@ -347,6 +497,7 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
         </div>
 
         {activeTab === 'logs' ? renderLogsTab() : null}
+        {activeTab === 'share' ? renderShareTab() : null}
         {activeTab === 'users' && isSystemAdmin ? renderUsersTab() : null}
       </div>
     </div>

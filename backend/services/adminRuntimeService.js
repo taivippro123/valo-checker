@@ -281,26 +281,13 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     const wishlistUuidSet = new Set(wishlistItems.map((item) => (item.skinUuid || '').toLowerCase()));
     const wishlistNameSet = new Set(wishlistItems.map((item) => (item.skinName || '').toLowerCase()));
 
-    // Prepare skin data for Discord
-    const skinsData = offers.map((offer) => {
-      const skinName = offer.metadata?.displayName || 'Unknown Skin';
-      const price = offer.priceVP || 0;
-      const tier = offer.metadata?.contentTier?.displayName || 'Unknown';
-      const tierIcon = offer.metadata?.contentTier?.displayIcon || '';
-      const displayIcon = offer.metadata?.displayIcon || offer.metadata?.image || '';
-      
-      return {
-        displayName: skinName,
-        price: price,
-        tier: tier,
-        tierIcon: tierIcon,
-        displayIcon: displayIcon
-      };
-    });
-
-    // Send Discord notification if webhook URL is configured
+    // Send Discord notification if webhook URL is configured.
+    // Truyền thẳng offers thô + wishlist để ảnh gắn được badge "đang săn".
     if (account.discordWebhookUrl) {
-      await sendDailyShopDiscord(account.discordWebhookUrl, account.name, skinsData, account.shard || 'ap');
+      await sendDailyShopDiscord(account.discordWebhookUrl, account.name, offers, account.shard || 'ap', {
+        wishlistUuids: wishlistUuidSet,
+        wishlistNames: wishlistNameSet
+      });
     }
 
     // Send ntfy notification if configured

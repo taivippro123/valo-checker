@@ -17,6 +17,7 @@ import FAQ from "./FAQ";
 import Footer from "./Footer";
 import InventoryPanel from "./InventoryPanel";
 import SurveyModal from "./SurveyModal";
+import ShareShop from "./ShareShop";
 
 const Dashboard = ({ onLogout, API_URL, username, fullName }) => {
   const [showPromoDialog, setShowPromoDialog] = useState(true);
@@ -153,6 +154,19 @@ try {
     if (!storefront) return null;
 
     const sections = [];
+
+    // Nút chia sẻ ảnh cho từng mục của shop.
+    const shareButton = (variant) => (
+      <ShareShop
+        API_URL={API_URL}
+        storefront={storefront}
+        variant={variant}
+        shard={shard}
+        riotId={riotId}
+        language={language}
+        t={t}
+      />
+    );
     const renderCard = (item, label, priceText, priceInfo = {}) => {
       const meta = item.metadata || {};
       return (
@@ -275,6 +289,7 @@ try {
               <Sparkles className="w-3.5 h-3.5 text-valorant-red" />{" "}
               {t.featuredBundleTitle}
             </h5>
+            {shareButton("bundle")}
           </div>
 
           {featuredBundles.map((bundle, bundleIdx) => {
@@ -446,9 +461,12 @@ try {
               <Sparkles className="w-3.5 h-3.5 text-valorant-red" />{" "}
               {t.dailySkinsTitle}
             </h5>
-            <span className="text-[10px] text-valorant-gray">
-              {t.dailyShop}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-valorant-gray">
+                {t.dailyShop}
+              </span>
+              {shareButton("daily")}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.skinsPanel.offers.map((offer, idx) => (
@@ -476,9 +494,12 @@ try {
               <Sparkles className="w-3.5 h-3.5 text-valorant-red" />{" "}
               {t.nightMarketTitle}
             </h5>
-            <span className="text-[10px] text-valorant-gray">
-              {t.discounted}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-valorant-gray">
+                {t.discounted}
+              </span>
+              {shareButton("night-market")}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.bonusStore.offers.map((offer, idx) => {
@@ -514,7 +535,10 @@ try {
               <Sparkles className="w-3.5 h-3.5 text-valorant-red" />{" "}
               {t.accessoryStoreTitle}
             </h5>
-            <span className="text-[10px] text-valorant-gray">KC</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-valorant-gray">KC</span>
+              {shareButton("accessory")}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {storefront.accessoryStore.offers.map((offer, idx) => (

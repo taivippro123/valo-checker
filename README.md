@@ -80,11 +80,49 @@ MONGO_URI=mongodb://127.0.0.1:27017/valo-check
 JWT_SECRET=super_secret_valorant_dashboard_key_123!
 ENCRYPTION_KEY=your-64-char-hex-key
 ADMIN_SECRET=valo-admin-secret
+
+# Shop share images
+PUBLIC_SITE_URL=https://valocheck.vercel.app
+PUBLIC_API_URL=https://api.your-backend-host
+SHOP_IMAGE_CACHE_MB=128
+SHOP_IMAGE_FETCH_CONCURRENCY=6
+SHARE_STATS_FLUSH_MS=60000
+TRUST_PROXY_HOPS=1
 ```
+
+On Vercel (frontend project) set the same `PUBLIC_API_URL` and `PUBLIC_SITE_URL`
+so the `/s/:id` serverless function can build absolute `og:image` URLs.
 
 ### Notes
 
 - `JWT_SECRET` should be replaced with a strong secret in production.
+- `PUBLIC_API_URL` must point at the backend origin: share links live on the site
+  domain but their images are served by the backend.
+- `SHOP_IMAGE_CACHE_MB` caps total RAM used by the three image caches
+  (raw downloads, resized pixels, rendered images). Lower it on small VPS plans.
+- `TRUST_PROXY_HOPS` must match how many reverse proxies sit in front of the API
+  (nginx = 1, nginx behind Cloudflare = 2). Set it to `0` only when Node is exposed
+  directly. If it is wrong, rate limiting buckets every visitor under the proxy IP.
+
+---
+
+## 🖼️ Shop Share Images
+
+Every store section (daily store, night market, featured bundle, accessory store)
+has a **Share** button that renders a branded image of the shop.
+
+- `backend/services/shopImageService.js` renders the image with `sharp`. The same
+  renderer feeds the web share button, the daily Discord webhook, and share links,
+  so a skin appearing in many accounts is downloaded and resized only once.
+- Riot ID is **hidden by default** and only drawn when the user opts in. It is never
+  persisted unless that toggle is on.
+- Only `*.valorant-api.com` image hosts are fetched (the storefront payload comes
+  from the client, so this is an SSRF guard).
+- `POST /api/share/snapshot` stores just the normalized item metadata (~2KB/doc),
+  never image buffers, and expires after 30 days via a TTL index.
+- `frontend/api/s/[id].js` is a Vercel serverless function that serves `/s/:id`
+  with real `og:` tags — the SPA rewrite alone cannot do this, so crawlers on
+  Facebook/Discord/Zalo would otherwise see no preview image.
 
 ---
 
@@ -105,6 +143,13 @@ ADMIN_SECRET=valo-admin-secret
 | POST | `/api/store/check` | Check the Riot storefront using the redirect URL |
 | POST | `/api/logs` | Save a successful storefront lookup log |
 | GET | `/api/admin/logs` | Retrieve admin logs |
+| POST | `/api/share/image` | Render a shop image and return the bytes |
+| POST | `/api/share/variants` | List store sections worth sharing |
+| POST | `/api/share/snapshot` | Create a 30-day share link |
+| GET | `/api/share/s/:id` | Share link metadata (used by the OG page) |
+| GET | `/api/share/s/:id/image` | Feed image (1080px, vertical) for a share link |
+| GET | `/api/share/s/:id/og` | 1200x630 preview image for a share link |
+| GET | `/api/share/stats` | Share funnel counters (admin only) |
 
 ---
 

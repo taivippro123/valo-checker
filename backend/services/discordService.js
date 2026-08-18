@@ -1,119 +1,6 @@
 import axios from "axios";
-import sharp from "sharp";
 import FormData from "form-data";
-
-// Tải ảnh từ url về buffer
-const fetchImageBuffer = async (url) => {
-  const res = await axios.get(url, { responseType: "arraybuffer" });
-  return Buffer.from(res.data);
-};
-
-// Ghép nhiều ảnh skin thành 1 ảnh collage dạng lưới 2 cột (2xN) + watermark link ở giữa
-const buildCollage = async (
-  imageUrls,
-  watermarkText = "https://valocheck.vercel.app/",
-) => {
-  try {
-    const cellWidth = 480;
-    const cellHeight = 260;
-    const cols = 2;
-    const rows = Math.ceil(imageUrls.length / cols);
-    const canvasWidth = cellWidth * cols;
-    const canvasHeight = cellHeight * rows;
-
-    // Tải + resize từng ảnh cho vừa khung ô (giữ nguyên tỉ lệ, nền trong suốt)
-    const buffers = await Promise.all(
-      imageUrls.map(async (url) => {
-        const raw = await fetchImageBuffer(url);
-        return sharp(raw)
-          .resize(cellWidth, cellHeight, {
-            fit: "contain",
-            background: { r: 0, g: 0, b: 0, alpha: 0 },
-          })
-          .png()
-          .toBuffer();
-      }),
-    );
-
-    const composites = buffers.map((buf, i) => ({
-      input: buf,
-      left: (i % cols) * cellWidth,
-      top: Math.floor(i / cols) * cellHeight,
-    }));
-
-    // Watermark chữ với text shadow để hiển thị trên mọi nền, không che skins
-    const watermarkSvg = `
-      <svg width="${canvasWidth}" height="${canvasHeight}">
-        <defs>
-          <filter id="textShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.8)" />
-            <feDropShadow dx="-2" dy="-2" stdDeviation="2" flood-color="rgba(255,255,255,0.8)" />
-          </filter>
-        </defs>
-        <text
-          x="50%"
-          y="50%"
-          text-anchor="middle"
-          dominant-baseline="middle"
-          font-family="Arial, sans-serif"
-          font-size="33"
-          fill="#F46545"
-        >${watermarkText}</text>
-      </svg>
-    `;
-    composites.push({ input: Buffer.from(watermarkSvg), left: 0, top: 0 });
-
-    const canvas = sharp({
-      create: {
-        width: canvasWidth,
-        height: canvasHeight,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      },
-    }).composite(composites);
-
-    return canvas.png().toBuffer();
-  } catch (error) {
-    console.error('[DiscordService] Error building collage:', error.message);
-    // Fallback: tạo collage không có watermark nếu lỗi
-    const cellWidth = 480;
-    const cellHeight = 260;
-    const cols = 2;
-    const rows = Math.ceil(imageUrls.length / cols);
-    const canvasWidth = cellWidth * cols;
-    const canvasHeight = cellHeight * rows;
-
-    const buffers = await Promise.all(
-      imageUrls.map(async (url) => {
-        const raw = await fetchImageBuffer(url);
-        return sharp(raw)
-          .resize(cellWidth, cellHeight, {
-            fit: "contain",
-            background: { r: 0, g: 0, b: 0, alpha: 0 },
-          })
-          .png()
-          .toBuffer();
-      }),
-    );
-
-    const composites = buffers.map((buf, i) => ({
-      input: buf,
-      left: (i % cols) * cellWidth,
-      top: Math.floor(i / cols) * cellHeight,
-    }));
-
-    const canvas = sharp({
-      create: {
-        width: canvasWidth,
-        height: canvasHeight,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      },
-    }).composite(composites);
-
-    return canvas.png().toBuffer();
-  }
-};
+import { renderStorefrontImage, SITE_URL } from "./shopImageService.js";
 
 const sendDiscordNotification = async (webhookUrl, message, title = 'Valorant Shop Checker') => {
   if (!webhookUrl) {
@@ -141,59 +28,69 @@ const sendDiscordNotification = async (webhookUrl, message, title = 'Valorant Sh
   }
 };
 
-const sendDailyShopDiscord = async (
-  webhookUrl,
-  accountName,
-  skins,
-  shard = "ap",
-) => {
+/**
+ * Gửi shop hằng ngày kèm ảnh chia sẻ.
+ *
+ * Ảnh dùng chung đúng renderer với nút share trên web (shopImageService),
+ * nên skin trùng nhau giữa các account chỉ tải/resize một lần nhờ cache.
+ *
+ * @param {string} webhookUrl
+ * @param {string} accountName
+ * @param {Array}  offers      - storefront.skinsPanel.offers dạng thô
+ * @param {string} shard
+ * @param {object} options     - { wishlistUuids, wishlistNames, lang }
+ */
+const sendDailyShopDiscord = async (webhookUrl, accountName, offers, shard = "ap", options = {}) => {
   if (!webhookUrl) {
-    console.log(
-      "[DiscordService] No webhook URL provided, skipping Discord notification",
-    );
+    console.log("[DiscordService] No webhook URL provided, skipping Discord notification");
     return false;
   }
 
-  if (!skins || skins.length === 0) {
+  if (!offers || offers.length === 0) {
     console.log("[DiscordService] No skins to send");
     return false;
   }
 
+  const { wishlistUuids = [], wishlistNames = [], lang = 'vn' } = options;
+
   try {
-    const skinListText = skins
-      .map((skin, index) => {
-        const price = skin.price ? `${skin.price} VP` : "N/A";
-        const tier = skin.tier ? ` (${skin.tier})` : "";
-        return `**${index + 1}. ${skin.displayName}**${tier} — ${price}`;
+    const skinListText = offers
+      .map((offer, index) => {
+        const meta = offer.metadata || offer;
+        const name = meta.displayName || offer.displayName || 'Unknown Skin';
+        const price = offer.priceVP ?? offer.price;
+        const tier = meta.contentTier?.displayName || offer.tier;
+        return `**${index + 1}. ${name}**${tier ? ` (${tier})` : ''} — ${price ? `${price} VP` : 'N/A'}`;
       })
       .join("\n");
 
-    const imageUrls = skins
-      .map((skin) => skin.displayIcon || skin.displayIcon2 || "")
-      .filter(Boolean);
-
     const embed = {
       title: `🎮 Daily Shop - ${accountName}`,
-      description: `Region: ${shard.toUpperCase()}\n${skins.length} skins available today\n\n${skinListText}`,
+      description: `Region: ${String(shard).toUpperCase()}\n${offers.length} skins available today\n\n${skinListText}`,
       color: 0xff4655,
       timestamp: new Date().toISOString(),
-      footer: {
-        text: "https://valocheck.vercel.app/",
-      },
+      footer: { text: SITE_URL.replace(/^https?:\/\//, '') }
     };
 
-    if (imageUrls.length > 0) {
-      // Ghép tất cả ảnh skin thành 1 collage với watermark
-      const collageBuffer = await buildCollage(imageUrls, "https://valocheck.vercel.app/");
-      embed.image = { url: "attachment://collage.png" };
+    let image = null;
+    try {
+      image = await renderStorefrontImage(
+        { skinsPanel: { offers } },
+        { variant: 'daily', size: 'feed', lang, shard, wishlistUuids, wishlistNames }
+      );
+    } catch (imageError) {
+      // Ảnh hỏng thì vẫn phải gửi được danh sách chữ.
+      console.warn('[DiscordService] Shop image render failed:', imageError.message);
+    }
 
+    if (image) {
+      embed.image = { url: "attachment://shop.jpg" };
       const form = new FormData();
       form.append("payload_json", JSON.stringify({ embeds: [embed] }));
-      form.append("files[0]", collageBuffer, {
-        filename: "collage.png",
-        contentType: "image/png",
+      form.append("files[0]", image.buffer, {
+        filename: "shop.jpg",
+        contentType: image.contentType
       });
-
       await axios.post(webhookUrl, form, { headers: form.getHeaders() });
     } else {
       await axios.post(webhookUrl, { embeds: [embed] });
@@ -202,10 +99,7 @@ const sendDailyShopDiscord = async (
     console.log("[DiscordService] Daily shop notification sent successfully");
     return true;
   } catch (error) {
-    console.error(
-      "[DiscordService] Failed to send Discord webhook:",
-      error.message,
-    );
+    console.error("[DiscordService] Failed to send Discord webhook:", error.message);
     return false;
   }
 };

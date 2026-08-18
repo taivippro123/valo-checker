@@ -9,10 +9,12 @@ import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/user.js';
 import contactRoutes from './routes/contact.js';
 import surveyRoutes from './routes/survey.js';
+import shareRoutes from './routes/share.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from './config/swagger.js';
 import { loadSkinsCache } from './services/storeService.js';
 import { startAdminAutomation } from './services/adminRuntimeService.js';
+import { startShareStatsFlusher } from './services/shareStatsService.js';
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +23,12 @@ dotenv.config();
 connectDB();
 
 const app = express();
+
+// Backend chạy sau nginx/Cloudflare trên VPS. Không khai báo trust proxy thì
+// express-rate-limit chỉ thấy IP của proxy, dồn toàn bộ user vào chung một
+// bucket giới hạn -> vài người dùng là cả site bị chặn.
+// Đặt 0 nếu chạy trực tiếp không qua proxy.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 
 // Middleware
 const corsOptions = {
@@ -38,6 +46,10 @@ app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   next();
 });
+// Đặt trước express.json() toàn cục: router share tự khai báo limit 1mb
+// vì payload storefront (kèm bundle) có thể vượt mức mặc định 100kb.
+app.use('/api/share', shareRoutes);
+
 app.use(express.json());
 
 // Swagger API Documentation
@@ -73,6 +85,7 @@ const startServer = async () => {
   try {
     await loadSkinsCache(true);
     await startAdminAutomation();
+    startShareStatsFlusher();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
