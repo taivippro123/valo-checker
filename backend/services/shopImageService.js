@@ -507,13 +507,16 @@ const buildCard = (theme, item, x, y, lang) => {
     });
   });
 
+  const priceBaseline = y + cardH - Math.round(cardH * 0.055);
+
+  // Neo nhãn tier theo giá chứ không theo tên: tên dài xuống 2 dòng thì các card
+  // vẫn thẳng hàng nhau thay vì mỗi card một độ cao.
   if (item.tierName) {
-    out += svgText(textLeft, nameTop + nameLines.length * Math.round(nameSize * 1.3) + 4, item.tierName.toUpperCase(), {
+    out += svgText(textLeft, priceBaseline - Math.round(priceSize * 1.55), item.tierName.toUpperCase(), {
       size: Math.round(nameSize * 0.68), weight: 800, fill: accent, spacing: 1.6
     });
   }
 
-  const priceBaseline = y + cardH - Math.round(cardH * 0.055);
   if (item.priceText) {
     out += svgText(textLeft, priceBaseline, item.priceText, {
       size: priceSize, weight: 800, fill: item.discountPercent ? COLORS.gold : COLORS.white
@@ -569,8 +572,11 @@ const computeLayout = (theme, itemCount) => {
   const cols = Math.min(theme.cols, Math.max(itemCount, 1));
   const cardW = Math.floor((theme.width - theme.pad * 2 - theme.gap * (cols - 1)) / cols);
   const rows = Math.ceil(itemCount / cols);
-  const height = theme.height
-    || theme.headerH + rows * theme.cardH + Math.max(rows - 1, 0) * theme.gap + theme.footerH;
+  const autoHeight =
+    theme.headerH + rows * theme.cardH + Math.max(rows - 1, 0) * theme.gap + theme.footerH;
+  // Chiều cao cố định (1200x630 của OG) chỉ đúng khi mọi item nằm trên một hàng.
+  // Chợ đêm 6 skin sẽ thành 2 hàng, giữ 630 là card tràn ra ngoài khung.
+  const height = theme.height && rows === 1 ? theme.height : autoHeight;
   return { ...theme, cols, cardW, rows, height };
 };
 

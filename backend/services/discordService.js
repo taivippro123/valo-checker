@@ -88,7 +88,8 @@ const sendDailyShopDiscord = async (webhookUrl, accountName, offers, shard = "ap
         { skinsPanel: { offers } },
         {
           variant: 'daily',
-          size: 'feed',
+          // 1 hàng 4 skin: hợp khung ngang của embed Discord hơn lưới 2x2 dọc.
+          size: 'og',
           lang,
           shard,
           riotId,
