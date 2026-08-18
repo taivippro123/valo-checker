@@ -1,6 +1,21 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/s/:id/og",
+      "destination": "/api/share?id=:id&kind=og"
+    },
+    {
+      "source": "/s/:id/image",
+      "destination": "/api/share?id=:id&kind=image"
+    },
+    {
+      "source": "/s/:id",
+      "destination": "/api/share?id=:id&kind=page"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

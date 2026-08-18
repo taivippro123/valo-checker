@@ -43,6 +43,12 @@ const accountSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Dạng gameName#tagLine. Lấy một lần rồi lưu lại: cron chỉ cần đọc,
+  // không phải gọi Riot mỗi lần gửi thông báo.
+  riotId: {
+    type: String,
+    default: ''
+  },
   shard: {
     type: String,
     default: 'ap'

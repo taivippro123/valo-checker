@@ -3,7 +3,8 @@ import Account from '../models/Account.js';
 import WishlistItem from '../models/WishlistItem.js';
 import { fetchAccountStore } from './storeService.js';
 import { sendDailyShopDiscord, sendDiscordNotification } from './discordService.js';
-import { getClientVersion, refreshTokenWithCookie } from './riotAuthService.js';
+import { createDailySnapshot } from './shareSnapshotService.js';
+import { getClientVersion, refreshTokenWithCookie, getUserInfo } from './riotAuthService.js';
 import { sendNtfyNotification } from './ntfyService.js';
 import { decryptText, encryptText } from '../utils/crypto.js';
 
@@ -58,6 +59,7 @@ const decryptAccountDocument = (doc) => {
     entitlementToken: decryptText(doc.entitlementToken || ''),
     idToken: decryptText(doc.idToken || ''),
     puuid: doc.puuid || '',
+    riotId: doc.riotId || '',
     shard: doc.shard || 'ap',
     clientVersion: doc.clientVersion || '',
     tokenExpiresAt: doc.tokenExpiresAt || null,
@@ -181,6 +183,27 @@ const getHoChiMinhDayKey = (dateValue = new Date()) => {
   }).format(dateValue);
 };
 
+/**
+ * Riot ID (gameName#tagLine) để in lên ảnh shop.
+ * Chỉ gọi Riot khi account chưa có, sau đó lưu lại dùng mãi.
+ */
+const resolveRiotId = async (account, accessToken) => {
+  if (account.riotId) return account.riotId;
+  if (!accessToken) return '';
+
+  try {
+    const info = await getUserInfo(accessToken);
+    const riotId = info?.gameName && info?.tagLine ? `${info.gameName}#${info.tagLine}` : '';
+    if (riotId) {
+      await updateAccount(account.id || account._id, { riotId });
+    }
+    return riotId;
+  } catch (error) {
+    console.warn('[AdminAutomation] Resolve Riot ID failed:', error.message);
+    return '';
+  }
+};
+
 const performReauth = async (accountId, { source = 'cron' } = {}) => {
   const account = await getAccountById(accountId);
   if (!account?.riotCookies) {
@@ -281,12 +304,37 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     const wishlistUuidSet = new Set(wishlistItems.map((item) => (item.skinUuid || '').toLowerCase()));
     const wishlistNameSet = new Set(wishlistItems.map((item) => (item.skinName || '').toLowerCase()));
 
+    // Link chia sẻ đi kèm thông báo: người đã bật auto-noti gần như không vào web,
+    // nên đây mới là chỗ họ thực sự chạm được vào tính năng chia sẻ.
+    // ID tính theo (account, ngày) nên chạy lại trong ngày không đẻ thêm link.
+    const riotId = await resolveRiotId(account, authDetails.accessToken);
+
+    let shareUrl = '';
+    try {
+      const snapshot = await createDailySnapshot({
+        accountId,
+        dayKey: getHoChiMinhDayKey(new Date()),
+        storefront: { skinsPanel: { offers } },
+        variant: 'daily',
+        shard: account.shard || 'ap',
+        riotId,
+        wishlistUuids: wishlistUuidSet,
+        wishlistNames: wishlistNameSet
+      });
+      shareUrl = snapshot?.pageUrl || '';
+    } catch (snapshotError) {
+      // Không có link vẫn phải gửi được thông báo.
+      console.warn('[AdminAutomation] Share snapshot failed:', snapshotError.message);
+    }
+
     // Send Discord notification if webhook URL is configured.
     // Truyền thẳng offers thô + wishlist để ảnh gắn được badge "đang săn".
     if (account.discordWebhookUrl) {
       await sendDailyShopDiscord(account.discordWebhookUrl, account.name, offers, account.shard || 'ap', {
         wishlistUuids: wishlistUuidSet,
-        wishlistNames: wishlistNameSet
+        wishlistNames: wishlistNameSet,
+        shareUrl,
+        riotId
       });
     }
 

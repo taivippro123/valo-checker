@@ -90,14 +90,14 @@ SHARE_STATS_FLUSH_MS=60000
 TRUST_PROXY_HOPS=1
 ```
 
-On Vercel (frontend project) set the same `PUBLIC_API_URL` and `PUBLIC_SITE_URL`
-so the `/s/:id` serverless function can build absolute `og:image` URLs.
+On Vercel set `PUBLIC_API_URL` (backend origin) and `PUBLIC_SITE_URL` so the
+share proxy in `api/share.mjs` can reach the backend.
 
 ### Notes
 
 - `JWT_SECRET` should be replaced with a strong secret in production.
-- `PUBLIC_API_URL` must point at the backend origin: share links live on the site
-  domain but their images are served by the backend.
+- `PUBLIC_API_URL` is read by the Vercel share proxy, not by the backend itself.
+  Set it in the Vercel project, pointing at the backend origin.
 - `SHOP_IMAGE_CACHE_MB` caps total RAM used by the three image caches
   (raw downloads, resized pixels, rendered images). Lower it on small VPS plans.
 - `TRUST_PROXY_HOPS` must match how many reverse proxies sit in front of the API
@@ -114,15 +114,42 @@ has a **Share** button that renders a branded image of the shop.
 - `backend/services/shopImageService.js` renders the image with `sharp`. The same
   renderer feeds the web share button, the daily Discord webhook, and share links,
   so a skin appearing in many accounts is downloaded and resized only once.
-- Riot ID is **hidden by default** and only drawn when the user opts in. It is never
-  persisted unless that toggle is on.
+- Riot ID is drawn on the image so shops from different accounts can be told apart,
+  including on public share links and the daily Discord image. Users can turn it off
+  with the toggle in the share dialog, and the choice is remembered; when it is off,
+  the Riot ID is not persisted on the snapshot either.
+- The backend caches each account's Riot ID on `Account.riotId` the first time it is
+  needed, so the daily cron does not call Riot for it again.
 - Only `*.valorant-api.com` image hosts are fetched (the storefront payload comes
   from the client, so this is an SSRF guard).
 - `POST /api/share/snapshot` stores just the normalized item metadata (~2KB/doc),
   never image buffers, and expires after 30 days via a TTL index.
-- `frontend/api/s/[id].js` is a Vercel serverless function that serves `/s/:id`
-  with real `og:` tags — the SPA rewrite alone cannot do this, so crawlers on
-  Facebook/Discord/Zalo would otherwise see no preview image.
+
+### How a share link is served
+
+`https://valocheck.vercel.app/s/<id>` must return real `og:` tags. A SPA rewrite
+cannot do that, so the path is routed away from `index.html`:
+
+```
+/s/:id        -> api/share.mjs (kind=page)  -> backend GET /api/share/s/:id/page
+/s/:id/image  -> api/share.mjs (kind=image) -> backend GET /api/share/s/:id/image
+/s/:id/og     -> api/share.mjs (kind=og)    -> backend GET /api/share/s/:id/og
+```
+
+- The HTML itself is rendered by the backend (`services/sharePageService.js`), so
+  the page and the images share one source of truth.
+- `api/share.mjs` is a thin proxy. It exists because the backend is exposed through
+  an **ngrok free** tunnel, and ngrok serves a browser-warning interstitial based on
+  **User-Agent**: Discordbot and ordinary browsers get the warning page instead of the
+  content, while Facebook/Twitter/Zalo pass through. `og:image` and `<img>` cannot send
+  a custom header, so the proxy adds `ngrok-skip-browser-warning` on their behalf.
+  It also keeps every public URL on the site domain instead of the ngrok host.
+- Once the backend runs on a real domain (Cloudflare Tunnel, or a domain pointed at
+  the VPS), the proxy can be dropped and `vercel.json` can rewrite `/s/:id` straight
+  to the backend.
+- The file is duplicated at `api/share.mjs` and `frontend/api/share.mjs` so it deploys
+  whether the Vercel **Root Directory** is the repo root or `frontend`. Delete whichever
+  copy is outside your root directory once you know which one applies.
 
 ---
 
@@ -146,7 +173,8 @@ has a **Share** button that renders a branded image of the shop.
 | POST | `/api/share/image` | Render a shop image and return the bytes |
 | POST | `/api/share/variants` | List store sections worth sharing |
 | POST | `/api/share/snapshot` | Create a 30-day share link |
-| GET | `/api/share/s/:id` | Share link metadata (used by the OG page) |
+| GET | `/api/share/s/:id` | Share link metadata (JSON) |
+| GET | `/api/share/s/:id/page` | Share landing page with `og:` tags |
 | GET | `/api/share/s/:id/image` | Feed image (1080px, vertical) for a share link |
 | GET | `/api/share/s/:id/og` | 1200x630 preview image for a share link |
 | GET | `/api/share/stats` | Share funnel counters (admin only) |

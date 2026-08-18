@@ -1,5 +1,4 @@
 import express from 'express';
-import crypto from 'crypto';
 import rateLimit from 'express-rate-limit';
 import ShopSnapshot from '../models/ShopSnapshot.js';
 import { protect } from '../middleware/authMiddleware.js';
@@ -14,6 +13,8 @@ import {
   SITE_URL
 } from '../services/shopImageService.js';
 import { trackShare, getShareStats } from '../services/shareStatsService.js';
+import { renderSharePage, renderExpiredPage } from '../services/sharePageService.js';
+import { snapshotUrls, createSnapshot } from '../services/shareSnapshotService.js';
 
 const router = express.Router();
 
@@ -78,18 +79,6 @@ const parseRequest = (body = {}) => {
 
   return { variant, size, lang, shard, showRiotId, riotId, items, title };
 };
-
-const makeShortId = () => crypto.randomBytes(6).toString('base64url'); // 8 ký tự, ~2.8e14 tổ hợp
-
-// Trang share nằm trên domain frontend, còn ảnh do backend phục vụ.
-// PUBLIC_API_URL cần trỏ về origin backend để thẻ og:image dùng được URL tuyệt đối.
-const API_PUBLIC_URL = (process.env.PUBLIC_API_URL || '').replace(/\/$/, '');
-
-const snapshotUrls = (shortId) => ({
-  pageUrl: SITE_URL + '/s/' + shortId,
-  imageUrl: API_PUBLIC_URL + '/api/share/s/' + shortId + '/image',
-  ogImageUrl: API_PUBLIC_URL + '/api/share/s/' + shortId + '/og'
-});
 
 const sendImage = (res, result, { immutable = false } = {}) => {
   res.setHeader('Content-Type', result.contentType);
@@ -162,9 +151,7 @@ router.post('/snapshot', snapshotLimiter, jsonBody, async (req, res) => {
       return res.status(400).json({ message: 'Không có dữ liệu shop để tạo link.' });
     }
 
-    const shortId = makeShortId();
-    await ShopSnapshot.create({
-      shortId,
+    const urls = await createSnapshot({
       variant: parsed.variant,
       lang: parsed.lang,
       shard: parsed.shard,
@@ -175,7 +162,7 @@ router.post('/snapshot', snapshotLimiter, jsonBody, async (req, res) => {
     });
 
     trackShare('snapshotsCreated', { variant: parsed.variant });
-    return res.json({ shortId, ...snapshotUrls(shortId) });
+    return res.json(urls);
   } catch (error) {
     console.error('[ShareRoute] Snapshot failed:', error.message);
     return res.status(500).json({ message: 'Không tạo được link chia sẻ.' });
@@ -188,6 +175,35 @@ const loadSnapshot = async (shortId) => {
 };
 
 /**
+ * GET /api/share/s/:shortId/page
+ * Trang HTML kem the og: cho link chia se. Vercel rewrite /s/:id vao day.
+ */
+router.get('/s/:shortId/page', publicLimiter, async (req, res) => {
+  const canonical = SITE_URL + '/s/' + String(req.params.shortId || '');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+  try {
+    const snapshot = await loadSnapshot(req.params.shortId);
+
+    if (!snapshot) {
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      return res.status(404).send(renderExpiredPage(canonical));
+    }
+
+    trackShare('pageViews', { variant: snapshot.variant });
+    ShopSnapshot.updateOne({ shortId: snapshot.shortId }, { $inc: { views: 1 } }).catch(() => {});
+
+    // Snapshot bat bien -> de CDN Vercel giu lau, crawler khong cham lai backend.
+    res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=86400, stale-while-revalidate=604800');
+    return res.status(200).send(renderSharePage(snapshot, snapshotUrls(snapshot.shortId)));
+  } catch (error) {
+    console.error('[ShareRoute] Share page failed:', error.message);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(500).send(renderExpiredPage(canonical));
+  }
+});
+
+/**
  * GET /api/share/s/:shortId
  * Metadata cho trang OG (serverless function của frontend gọi vào đây).
  */
@@ -195,9 +211,6 @@ router.get('/s/:shortId', publicLimiter, async (req, res) => {
   try {
     const snapshot = await loadSnapshot(req.params.shortId);
     if (!snapshot) return res.status(404).json({ message: 'Link không tồn tại hoặc đã hết hạn.' });
-
-    trackShare('pageViews', { variant: snapshot.variant });
-    ShopSnapshot.updateOne({ shortId: snapshot.shortId }, { $inc: { views: 1 } }).catch(() => {});
 
     res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
     return res.json({

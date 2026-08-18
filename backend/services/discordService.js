@@ -38,7 +38,7 @@ const sendDiscordNotification = async (webhookUrl, message, title = 'Valorant Sh
  * @param {string} accountName
  * @param {Array}  offers      - storefront.skinsPanel.offers dạng thô
  * @param {string} shard
- * @param {object} options     - { wishlistUuids, wishlistNames, lang }
+ * @param {object} options     - { wishlistUuids, wishlistNames, lang, shareUrl, riotId }
  */
 const sendDailyShopDiscord = async (webhookUrl, accountName, offers, shard = "ap", options = {}) => {
   if (!webhookUrl) {
@@ -51,7 +51,7 @@ const sendDailyShopDiscord = async (webhookUrl, accountName, offers, shard = "ap
     return false;
   }
 
-  const { wishlistUuids = [], wishlistNames = [], lang = 'vn' } = options;
+  const { wishlistUuids = [], wishlistNames = [], lang = 'vn', shareUrl = '', riotId = '' } = options;
 
   try {
     const skinListText = offers
@@ -64,19 +64,38 @@ const sendDailyShopDiscord = async (webhookUrl, accountName, offers, shard = "ap
       })
       .join("\n");
 
+    // Webhook thường của Discord không gửi được components nên không có nút bấm:
+    // link chia sẻ đi vào tiêu đề embed (bấm được) và một dòng markdown cuối mô tả.
+    const shareLine = shareUrl
+      ? (lang === 'en'
+          ? `\n\n[📤 Share this store](${shareUrl})`
+          : `\n\n[📤 Chia sẻ shop này](${shareUrl})`)
+      : '';
+
     const embed = {
       title: `🎮 Daily Shop - ${accountName}`,
-      description: `Region: ${String(shard).toUpperCase()}\n${offers.length} skins available today\n\n${skinListText}`,
+      description: `Region: ${String(shard).toUpperCase()}\n${offers.length} skins available today\n\n${skinListText}${shareLine}`,
       color: 0xff4655,
       timestamp: new Date().toISOString(),
       footer: { text: SITE_URL.replace(/^https?:\/\//, '') }
     };
 
+    if (shareUrl) embed.url = shareUrl;
+
     let image = null;
     try {
       image = await renderStorefrontImage(
         { skinsPanel: { offers } },
-        { variant: 'daily', size: 'feed', lang, shard, wishlistUuids, wishlistNames }
+        {
+          variant: 'daily',
+          size: 'feed',
+          lang,
+          shard,
+          riotId,
+          showRiotId: Boolean(riotId),
+          wishlistUuids,
+          wishlistNames
+        }
       );
     } catch (imageError) {
       // Ảnh hỏng thì vẫn phải gửi được danh sách chữ.

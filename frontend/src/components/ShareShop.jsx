@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -47,6 +48,15 @@ const toPngBlob = (blob) =>
 
 const RIOT_ID_PREF_KEY = "valocheck:share:showRiotId";
 
+// Mặc định hiện Riot ID; user tắt đi thì lựa chọn đó được nhớ lại.
+const readRiotIdPref = () => {
+  try {
+    return localStorage.getItem(RIOT_ID_PREF_KEY) !== "0";
+  } catch {
+    return true;
+  }
+};
+
 const ShareShop = ({
   API_URL,
   storefront,
@@ -61,10 +71,7 @@ const ShareShop = ({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
-  // Ghi nhớ lựa chọn giữa các lần share; mặc định vẫn là ẩn.
-  const [showRiotId, setShowRiotId] = useState(
-    () => localStorage.getItem(RIOT_ID_PREF_KEY) === "1",
-  );
+  const [showRiotId, setShowRiotId] = useState(readRiotIdPref);
   const [shareLink, setShareLink] = useState("");
   const blobRef = useRef(null);
   const previewUrlRef = useRef("");
@@ -182,7 +189,7 @@ const ShareShop = ({
     try {
       const png = await toPngBlob(blobRef.current);
       await navigator.clipboard.write([new window.ClipboardItem({ "image/png": png })]);
-      toast.success(vn ? "Đã copy ảnh, dán thẳng vào Discord/Messenger" : "Image copied");
+      toast.success(vn ? "Đã copy ảnh" : "Image copied");
     } catch {
       toast.error(
         vn
@@ -247,6 +254,25 @@ const ShareShop = ({
     blobRef.current = null;
   };
 
+  // Modal phu kin trang nen phai khoa scroll nen, kem Esc de dong.
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") closeModal();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
     <>
       <button
@@ -258,13 +284,21 @@ const ShareShop = ({
         {label || t.shareImage || (vn ? "Chia sẻ" : "Share")}
       </button>
 
-      {open ? (
+      {/*
+        Bat buoc dung portal ra document.body: khu vuc shop nam trong .glass-panel,
+        ma backdrop-filter tao containing block moi cho position:fixed - de nguyen
+        tai cho thi inset-0 bam vao panel do va modal bi lech sang phai.
+      */}
+      {open && typeof document !== "undefined"
+        ? createPortal(
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-2 sm:p-4"
+          role="dialog"
+          aria-modal="true"
           onClick={closeModal}
         >
           <div
-            className="glass-panel relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 shadow-2xl"
+            className="glass-panel relative flex max-h-[calc(100dvh-1rem)] w-full max-w-[96vw] flex-col overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50 sm:max-h-[calc(100dvh-2rem)] sm:max-w-md"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-3">
@@ -343,8 +377,8 @@ const ShareShop = ({
               <p className="mt-1.5 px-1 text-[10px] leading-relaxed text-valorant-gray">
                 {t.shareRiotIdHint ||
                   (vn
-                    ? "Mặc định ẩn. Riot ID công khai có thể bị người khác dùng để nhắm vào tài khoản của bạn."
-                    : "Hidden by default. A public Riot ID can be used to target your account.")}
+                    ? "Đang hiện trên ảnh để phân biệt các acc. Tắt đi nếu bạn không muốn lộ Riot ID."
+                    : "Shown on the image so you can tell accounts apart. Turn it off to keep your Riot ID private.")}
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
@@ -419,8 +453,10 @@ const ShareShop = ({
               ) : null}
             </div>
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </>
   );
 };
