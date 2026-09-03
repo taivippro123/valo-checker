@@ -177,8 +177,12 @@ router.post('/check', async (req, res) => {
         authToken: accessToken,
         expiresIn
       });
-    } catch (profileError) {
-      console.warn('[StoreRoute] Profile fetch failed:', profileError.message);
+    } catch (error) {
+      console.warn('[StoreRoute] Profile fetch failed:', JSON.stringify({
+        message: error.message,
+        status: error.status ?? error.response?.status ?? null,
+        errors: error.errors || error.attempts || null
+      }));
     }
 
     const riotId = `${userInfo.gameName}#${userInfo.tagLine}`;

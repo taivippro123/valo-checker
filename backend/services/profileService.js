@@ -26,26 +26,32 @@ const buildRiotHeaders = (authDetails) => {
 
 const riotGet = async (shard, path, authDetails) => {
   const candidateShards = getStorefrontCandidateShards(shard);
-  const lastError = [];
+  const attempts = [];
 
   for (const activeShard of candidateShards) {
     const url = `https://pd.${activeShard}.a.pvp.net${path}`;
     try {
-      const response = await axios.get(url, { headers: buildRiotHeaders(authDetails) });
+      const response = await axios.get(url, { headers: buildRiotHeaders(authDetails), timeout: 15000 });
       return { shard: activeShard, data: response.data };
     } catch (error) {
-      lastError.push({
+      attempts.push({
         shard: activeShard,
+        url,
         status: error.response?.status || null,
+        errorCode: error.response?.data?.errorCode || null,
         message: error.response?.data?.message || error.message
       });
       if (error.response?.status === 404) continue;
-      throw error;
+      break;
     }
   }
 
-  const err = new Error(lastError.at(-1)?.message || 'Riot API request failed on all shards.');
-  err.attempts = lastError;
+  const last = attempts.at(-1);
+  const err = new Error(last?.message || 'Riot API request failed on all shards.');
+  err.path = path;
+  err.status = last?.status || null;
+  err.errorCode = last?.errorCode || null;
+  err.attempts = attempts;
   throw err;
 };
 
@@ -55,10 +61,19 @@ export const loadWeaponsCache = async (force = false) => {
     return weaponsCache;
   }
 
-  const response = await axios.get('https://valorant-api.com/v1/weapons');
-  weaponsCache = response.data?.data || [];
-  weaponsCacheTime = now;
-  return weaponsCache;
+  try {
+    // ~3.5MB payload; without a timeout a stalled fetch hangs the whole profile call.
+    const response = await axios.get('https://valorant-api.com/v1/weapons', { timeout: 20000 });
+    weaponsCache = response.data?.data || [];
+    weaponsCacheTime = now;
+    return weaponsCache;
+  } catch (error) {
+    if (weaponsCache) {
+      console.warn('[ProfileService] Weapons catalog refresh failed, serving stale cache:', error.message);
+      return weaponsCache;
+    }
+    throw error;
+  }
 };
 
 export const resolveGunLoadout = (skinId, chromaId, weapons = []) => {
@@ -170,19 +185,30 @@ const mapWalletBalances = (balances = {}) => {
   return wallet;
 };
 
-const extractSprayEntries = (spraysData) => {
-  if (!spraysData) return [];
+// personalization v3 replaced the `Sprays` block with `ActiveExpressions`,
+// a flat list tagged by expression type. Sprays carry this TypeID.
+const SPRAY_EXPRESSION_TYPE_ID = 'd5f120f8-ff8c-4aac-92ea-f2b5acbe9475';
 
-  if (Array.isArray(spraysData)) {
-    return spraysData
-      .map((slot) => ({
-        sprayId: slot?.SprayID || slot?.sprayID || null,
-        slotId: slot?.SlotID || slot?.EquipSlotID || null
+const extractSprayEntries = (loadout = {}) => {
+  const expressions = loadout.ActiveExpressions;
+  if (Array.isArray(expressions)) {
+    return expressions
+      .filter((entry) => !entry?.TypeID || entry.TypeID === SPRAY_EXPRESSION_TYPE_ID)
+      .map((entry, index) => ({
+        sprayId: entry?.AssetID || null,
+        slotId: entry?.SlotID || entry?.TypeID || null,
+        slotIndex: index
       }))
       .filter((entry) => entry.sprayId);
   }
 
-  const selections = spraysData.SpraySelections || spraysData.EquipSlotIDs || [];
+  // Legacy v2 shapes, kept so an older payload still renders.
+  const spraysData = loadout.Sprays;
+  if (!spraysData) return [];
+
+  const selections = Array.isArray(spraysData)
+    ? spraysData
+    : spraysData.SpraySelections || spraysData.EquipSlotIDs || [];
   if (!Array.isArray(selections)) return [];
 
   return selections
@@ -194,17 +220,49 @@ const extractSprayEntries = (spraysData) => {
 };
 
 export const fetchAccountProfile = async (shard, puuid, authDetails) => {
-  const [xpResult, walletResult, loadoutResult, weapons] = await Promise.all([
+  const settled = await Promise.allSettled([
     riotGet(shard, `/account-xp/v1/players/${puuid}`, authDetails),
     riotGet(shard, `/store/v1/wallet/${puuid}`, authDetails),
-    riotGet(shard, `/personalization/v2/players/${puuid}/playerloadout`, authDetails),
+    riotGet(shard, `/personalization/v3/players/${puuid}/playerloadout`, authDetails),
     loadWeaponsCache()
   ]);
 
-  const activeShard = loadoutResult.shard || walletResult.shard || xpResult.shard || shard;
-  const xpData = xpResult.data || {};
-  const walletData = walletResult.data || {};
-  const loadout = loadoutResult.data || {};
+  const labels = ['account-xp', 'wallet', 'playerloadout', 'weapons-catalog'];
+  const errors = [];
+
+  settled.forEach((entry, index) => {
+    if (entry.status !== 'rejected') return;
+    const reason = entry.reason || {};
+    errors.push({
+      source: labels[index],
+      status: reason.status ?? reason.response?.status ?? null,
+      errorCode: reason.errorCode ?? null,
+      message: reason.message || 'Unknown error',
+      attempts: reason.attempts || null
+    });
+  });
+
+  if (errors.length) {
+    console.warn('[ProfileService] Partial profile fetch:', JSON.stringify(errors));
+  }
+
+  // Every source is optional: one failing Riot endpoint must not null out the whole profile.
+  const valueOf = (index) => (settled[index].status === 'fulfilled' ? settled[index].value : null);
+  const xpResult = valueOf(0);
+  const walletResult = valueOf(1);
+  const loadoutResult = valueOf(2);
+  const weapons = valueOf(3) || [];
+
+  if (!xpResult && !walletResult && !loadoutResult) {
+    const err = new Error('All Riot profile endpoints failed.');
+    err.errors = errors;
+    throw err;
+  }
+
+  const activeShard = loadoutResult?.shard || walletResult?.shard || xpResult?.shard || shard;
+  const xpData = xpResult?.data || {};
+  const walletData = walletResult?.data || {};
+  const loadout = loadoutResult?.data || {};
 
   const identity = loadout.Identity || {};
   const [playerCard, playerTitle] = await Promise.all([
@@ -220,7 +278,7 @@ export const fetchAccountProfile = async (shard, puuid, authDetails) => {
     metadata: resolveGunLoadout(gun.SkinID, gun.ChromaID, weapons)
   }));
 
-  const sprayEntries = extractSprayEntries(loadout.Sprays);
+  const sprayEntries = extractSprayEntries(loadout);
 
   const sprays = await Promise.all(
     sprayEntries.map(async (entry) => ({
@@ -232,7 +290,7 @@ export const fetchAccountProfile = async (shard, puuid, authDetails) => {
   return {
     shard: activeShard,
     puuid,
-    level: xpData.Progress?.Level ?? identity.AccountLevel ?? null,
+    level: xpData.Progress?.Level ?? (identity.AccountLevel || null),
     xp: xpData.Progress?.XP ?? null,
     wallet: mapWalletBalances(walletData.Balances),
     identity: {
