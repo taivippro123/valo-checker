@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Lock, User, Terminal, Mail, UserPlus, Globe, Eye } from 'lucide-react';
+import { Lock, User, Terminal, Mail, UserPlus, Globe, Eye, EyeOff  } from 'lucide-react';
 import translations from '../i18n';
 import { toast } from 'sonner';
 
@@ -236,6 +236,13 @@ const Register = ({ onRegisterSuccess, API_URL }) => {
                 placeholder={t.register.passwordPlaceholder}
                 className="w-full bg-valorant-dark border border-white/10 rounded-lg py-2.5 pl-10 pr-10 text-white placeholder-valorant-gray/60 focus:outline-none focus:border-valorant-red focus:ring-1 focus:ring-valorant-red/30 transition-all"
               />
+               <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-valorant-gray hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

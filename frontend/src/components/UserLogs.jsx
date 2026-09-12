@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Check, LogOut, Plus, RefreshCw, Trash2, Edit, UserPlus } from 'lucide-react';
+import { Check, LogOut, Plus, RefreshCw, Trash2, Edit, UserPlus, X } from 'lucide-react';
 import translations from '../i18n';
 import { toast } from 'sonner';
 
@@ -12,6 +12,7 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
   const [selectedAccountTab, setSelectedAccountTab] = useState('details');
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  const [showGuidePrompt, setShowGuidePrompt] = useState(false);
   const [accountsError, setAccountsError] = useState('');
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState(null);
@@ -47,7 +48,9 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
       const res = await axios.get(`${API_URL}/api/user/accounts`, {
         headers: authHeaders()
       });
-      setAccounts(Array.isArray(res.data?.accounts) ? res.data.accounts : []);
+      const loadedAccounts = Array.isArray(res.data?.accounts) ? res.data.accounts : [];
+      setAccounts(loadedAccounts);
+      setShowGuidePrompt(loadedAccounts.length === 0);
       if (!selectedAccountId && res.data?.accounts?.length > 0) {
         setSelectedAccountId(res.data.accounts[0].id);
       }
@@ -663,6 +666,37 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-valorant-dark to-valorant-black text-white">
+      {showGuidePrompt && !accountsLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="glass-panel relative w-full max-w-md rounded-xl border border-white/10 p-6 shadow-2xl shadow-black/50">
+            <button
+              type="button"
+              onClick={() => setShowGuidePrompt(false)}
+              className="absolute right-4 top-4 text-valorant-gray transition-colors hover:text-white"
+              aria-label="Close guide prompt"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2 className="pr-8 text-xl font-bold text-white">
+              {language === 'vn' ? 'Chưa kết nối tài khoản game' : 'No game account connected'}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-valorant-gray">
+              {language === 'vn'
+                ? 'Bấm vào nút Xem hướng dẫn để sử dụng.'
+                : 'Click View Guide to learn how to get started.'}
+            </p>
+            <Link
+              to="/guide"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setShowGuidePrompt(false)}
+              className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-valorant-red px-4 py-3 font-bold text-white transition-colors hover:bg-valorant-red-hover"
+            >
+              {t.viewGuide}
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-4 py-6 lg:py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 lg:mb-8">
           <h1 className="text-2xl lg:text-3xl font-bold">{t.brand} - {fullName || username}</h1>
