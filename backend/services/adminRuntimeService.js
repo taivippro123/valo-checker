@@ -174,6 +174,18 @@ const notifyNtfy = async (ntfyTopicUrl, message, title = 'VALO CHECK') => {
   }
 };
 
+const notifyShopCheckFailure = async (account, reason) => {
+  const message = `Daily Shop hôm nay của tài khoản ${account.name} chưa thể lấy được. Lý do: ${reason}. Riot có thể đang bảo trì hoặc cập nhật game.`;
+
+  if (account.ntfyTopicUrl) {
+    await notifyNtfy(account.ntfyTopicUrl, message, 'Daily Shop không khả dụng');
+  }
+
+  if (account.discordWebhookUrl) {
+    await sendDiscordNotification(account.discordWebhookUrl, message, '⚠️ Daily Shop không khả dụng');
+  }
+};
+
 const getHoChiMinhDayKey = (dateValue = new Date()) => {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: SHOP_CRON_TIMEZONE,
@@ -284,20 +296,17 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     }
   }
 
-  const authDetails = await getRuntimeAuthDetails(accountId);
-  if (!authDetails?.accessToken || !authDetails?.entitlementToken || !authDetails?.puuid) {
-    return { ok: false, reason: 'NO_RUNTIME_TOKEN' };
-  }
-
   try {
+    const authDetails = await getRuntimeAuthDetails(accountId);
+    if (!authDetails?.accessToken || !authDetails?.entitlementToken || !authDetails?.puuid) {
+      throw new Error('Thiếu phiên đăng nhập Riot hợp lệ, cần reauth trước khi kiểm tra shop');
+    }
+
     const { storefront } = await fetchAccountStore(account.shard || authDetails.shard || 'ap', authDetails.puuid, authDetails);
     const offers = storefront?.skinsPanel?.offers || [];
 
     if (!offers.length) {
-      if (account.ntfyTopicUrl) {
-        await notifyNtfy(account.ntfyTopicUrl, `Hôm nay shop Valorant cho tài khoản ${account.name} chưa có dữ liệu skin.`, 'Daily Shop');
-      }
-      return;
+      throw new Error(storefront?.warning || 'Riot không trả về dữ liệu skin hôm nay');
     }
 
     const wishlistItems = await WishlistItem.find({ accountId }).lean();
@@ -372,13 +381,16 @@ const performShopCheck = async (accountId, { source = 'cron' } = {}) => {
     });
     return { ok: true, offers };
   } catch (error) {
+    const reason = error.message || 'Lỗi không xác định khi gọi Riot';
     await updateAccount(accountId, {
       lastShopCheckAt: new Date(),
       lastShopCheckStatus: 'failed',
-      lastShopCheckError: error.message
+      lastShopCheckError: reason,
+      lastShopCheckSource: source
     });
-    console.error(`[AdminAutomation] Daily shop check failed for account ${account.name}:`, error.message);
-    return { ok: false, reason: error.message };
+    await notifyShopCheckFailure(account, reason);
+    console.error(`[AdminAutomation] Daily shop check failed for account ${account.name}:`, reason);
+    return { ok: false, reason };
   }
 };
 
