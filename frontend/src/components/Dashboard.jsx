@@ -16,6 +16,7 @@ import translations from "../i18n";
 import FAQ from "./FAQ";
 import Footer from "./Footer";
 import InventoryPanel from "./InventoryPanel";
+import OwnedWeaponsPanel from "./OwnedWeaponsPanel";
 import SurveyModal from "./SurveyModal";
 import ShareShop from "./ShareShop";
 
@@ -796,6 +797,17 @@ try {
                     >
                       {t.tabViewInventory}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ownedWeapons")}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
+                        activeTab === "ownedWeapons"
+                          ? "bg-valorant-red text-white"
+                          : "text-valorant-gray hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      {t.tabShareOwnedWeapons}
+                    </button>
                   </div>
 
                   {activeTab === "store" ? (
@@ -806,8 +818,10 @@ try {
                         {t.storeUnavailable}
                       </div>
                     )
-                  ) : (
+                  ) : activeTab === "inventory" ? (
                     <InventoryPanel profile={profile} riotId={riotId} t={t} />
+                  ) : (
+                    <OwnedWeaponsPanel profile={profile} API_URL={API_URL} riotId={riotId} shard={shard} language={language} t={t} />
                   )}
                 </div>
               )}

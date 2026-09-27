@@ -418,6 +418,28 @@ const OG_THEME = {
   metaGap: 44
 };
 
+const INVENTORY_THEME = {
+  width: 1400,
+  pad: 44,
+  gap: 18,
+  cols: 5,
+  headerH: 184,
+  footerH: 100,
+  cardH: 300,
+  imgH: 142,
+  brandSize: 28,
+  titleSize: 46,
+  metaSize: 21,
+  nameSize: 22,
+  priceSize: 18,
+  basePriceSize: 14,
+  badgeSize: 14,
+  footerSize: 22,
+  tierIcon: 34,
+  barGap: 16,
+  metaGap: 52
+};
+
 // valorant-api trả displayName dạng "Select Edition"/"Ultra Edition",
 // nên phải bỏ hậu tố "edition" trước khi tra màu.
 const tierAccent = (tierName) => {
@@ -500,19 +522,26 @@ const buildCard = (theme, item, x, y, lang) => {
   const textWidthMax = imgW;
   const nameTop = y + innerPad + imgH + Math.round(nameSize * 1.55);
   const nameLines = wrapText(item.name, textWidthMax, nameSize, { bold: true, maxLines: 2 });
+  const isInventory = theme.width === INVENTORY_THEME.width && theme.cols === INVENTORY_THEME.cols;
+  const nameLineHeight = Math.round(nameSize * 1.3);
 
   nameLines.forEach((line, index) => {
-    out += svgText(textLeft, nameTop + index * Math.round(nameSize * 1.3), line, {
+    out += svgText(textLeft, nameTop + index * nameLineHeight, line, {
       size: nameSize, weight: 700, fill: COLORS.white
     });
   });
 
-  const priceBaseline = y + cardH - Math.round(cardH * 0.055);
+  // Inventory cards have a dedicated tier row below the two-line name block.
+  // This prevents long skin names from colliding with the tier label.
+  const priceBaseline = isInventory
+    ? y + cardH - Math.round(nameSize * 0.45)
+    : y + cardH - Math.round(cardH * 0.055);
+  const tierBaseline = isInventory
+    ? y + cardH - Math.round(nameSize * 1.45)
+    : priceBaseline - Math.round(priceSize * 1.55);
 
-  // Neo nhãn tier theo giá chứ không theo tên: tên dài xuống 2 dòng thì các card
-  // vẫn thẳng hàng nhau thay vì mỗi card một độ cao.
   if (item.tierName) {
-    out += svgText(textLeft, priceBaseline - Math.round(priceSize * 1.55), item.tierName.toUpperCase(), {
+    out += svgText(textLeft, tierBaseline, truncate(item.tierName.toUpperCase(), textWidthMax, Math.round(nameSize * 0.68), true), {
       size: Math.round(nameSize * 0.68), weight: 800, fill: accent, spacing: 1.6
     });
   }
@@ -614,6 +643,7 @@ export const renderShopImage = async (input = {}) => {
     items = [],
     variant = 'daily',
     size = 'feed',
+    maxItems = MAX_ITEMS,
     lang = 'vn',
     shard = '',
     riotId = '',
@@ -624,14 +654,14 @@ export const renderShopImage = async (input = {}) => {
 
   const usableItems = items
     .filter((item) => item && item.name)
-    .slice(0, MAX_ITEMS);
+    .slice(0, Math.max(1, Number(maxItems) || MAX_ITEMS));
 
   if (!usableItems.length) {
     throw new Error('NO_ITEMS_TO_RENDER');
   }
 
   const language = lang === 'en' ? 'en' : 'vn';
-  const baseTheme = size === 'og' ? OG_THEME : FEED_THEME;
+  const baseTheme = size === 'og' ? OG_THEME : size === 'inventory' ? INVENTORY_THEME : FEED_THEME;
   const theme = computeLayout(baseTheme, usableItems.length);
   const dateLabel = formatDate(date ? new Date(date) : new Date(), language);
 
@@ -764,9 +794,41 @@ export const renderStorefrontImage = async (storefront, options = {}) => {
   });
 };
 
+export const buildItemsFromOwnedWeapons = (ownedWeapons = [], { premiumOnly = false } = {}) => {
+  const items = ownedWeapons
+    .map((entry) => {
+      const metadata = entry?.metadata || entry || {};
+      const tierRank = Number(metadata.contentTier?.rank);
+      if (premiumOnly && (!Number.isFinite(tierRank) || tierRank < 2)) return null;
+
+      return {
+        name: normalizeText(metadata.displayName || 'Unknown Skin'),
+        imageUrl: metadata.fullRender || metadata.displayIcon || '',
+        tierName: normalizeText(metadata.contentTier?.displayName || '', 32),
+        tierIconUrl: metadata.contentTier?.displayIcon || '',
+        priceText: '',
+        basePriceText: '',
+        discountPercent: null,
+        isWishlist: false,
+        weaponName: normalizeText(metadata.weaponName || '', 40),
+        skinUuid: metadata.skinUuid || ''
+      };
+    })
+    .filter(Boolean);
+
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = item.skinUuid || `${item.weaponName}|${item.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 export default {
   renderShopImage,
   renderStorefrontImage,
+  buildItemsFromOwnedWeapons,
   buildItemsFromStorefront,
   getAvailableVariants,
   getBundleTitle,

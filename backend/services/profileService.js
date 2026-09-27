@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getStorefrontCandidateShards } from './storeService.js';
+import { getStorefrontCandidateShards, resolveContentTier } from './storeService.js';
 
 const CLIENT_PLATFORM = 'ew0KCSJwbGF0Zm9ybVR5cGUiOiAiUEMiLA0KCSJwbGF0Zm9ybU9TIjogIldpbmRvd3MiLA0KCSJwbGF0Zm9ybU9TVmVyc2lvbiI6ICIxMC4wLjE5MDQyLjEuMjU2LjY0Yml0IiwNCgkicGxhdGZvcm1DaGlwc2V0IjogIlVua25vd24iDQp9';
 
@@ -107,6 +107,8 @@ export const resolveGunLoadout = (skinId, chromaId, weapons = []) => {
       return {
         weaponName: weapon.displayName,
         displayName,
+        skinUuid: skin.uuid,
+        contentTierUuid: skin.contentTierUuid || null,
         fullRender,
         displayIcon: skin.displayIcon || weapon.displayIcon || null,
         skinId,
@@ -121,6 +123,8 @@ export const resolveGunLoadout = (skinId, chromaId, weapons = []) => {
     fullRender: null,
     displayIcon: null,
     skinId,
+    skinUuid: null,
+    contentTierUuid: null,
     chromaId: chromaId || null
   };
 };
@@ -219,15 +223,76 @@ const extractSprayEntries = (loadout = {}) => {
     .filter((entry) => entry.sprayId);
 };
 
+const WEAPON_SKIN_LEVEL_ITEM_TYPE_ID = 'e7c63390-eda7-46e0-bb7a-a6abdacd2433';
+
+const extractEntitlementIds = (data) => {
+  const groupedEntries = data?.EntitlementsByTypes || data?.entitlementsByTypes || [];
+  const entries = groupedEntries.length
+    ? groupedEntries.flatMap((group) => group?.Entitlements || group?.entitlements || [])
+    : (Array.isArray(data) ? data : data?.Entitlements || data?.entitlements || []);
+  return entries
+    .map((entry) => typeof entry === 'string' ? entry : entry?.ItemID || entry?.itemId)
+    .filter(Boolean);
+};
+
+const fetchOwnedWeaponSkins = async (shard, puuid, authDetails, weapons) => {
+  const currentVersion = 1;
+  const maxVersionRetries = 2;
+  let lastError = null;
+
+  for (let versionOffset = 0; versionOffset <= maxVersionRetries; versionOffset += 1) {
+    const version = currentVersion + versionOffset;
+    try {
+      const result = await riotGet(
+        shard,
+        `/store/v${version}/entitlements/${puuid}/${WEAPON_SKIN_LEVEL_ITEM_TYPE_ID}`,
+        authDetails
+      );
+      const ownedItemIds = extractEntitlementIds(result.data);
+      const ownedWeapons = (await Promise.all(ownedItemIds
+        .map((itemId) => {
+          const metadata = resolveGunLoadout(itemId, null, weapons);
+          if (!metadata?.weaponName) return null;
+          return metadata.contentTierUuid
+            ? resolveContentTier(metadata.contentTierUuid).then((contentTier) => ({
+                ...metadata,
+                contentTier,
+                ownedItemId: itemId
+              }))
+            : Promise.resolve({ ...metadata, contentTier: null, ownedItemId: itemId });
+        })
+        .filter(Boolean)))
+        .filter(Boolean)
+        .filter((skin, index, allSkins) => (
+          allSkins.findIndex((candidate) => candidate.skinUuid
+            ? candidate.skinUuid === skin.skinUuid
+            : candidate.ownedItemId === skin.ownedItemId) === index
+        ));
+
+      return {
+        shard: result.shard,
+        version,
+        ownedWeapons
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Owned weapon skins endpoint unavailable.');
+};
+
 export const fetchAccountProfile = async (shard, puuid, authDetails) => {
+  const weaponsPromise = loadWeaponsCache();
   const settled = await Promise.allSettled([
     riotGet(shard, `/account-xp/v1/players/${puuid}`, authDetails),
     riotGet(shard, `/store/v1/wallet/${puuid}`, authDetails),
     riotGet(shard, `/personalization/v3/players/${puuid}/playerloadout`, authDetails),
-    loadWeaponsCache()
+    weaponsPromise,
+    weaponsPromise.then((weapons) => fetchOwnedWeaponSkins(shard, puuid, authDetails, weapons))
   ]);
 
-  const labels = ['account-xp', 'wallet', 'playerloadout', 'weapons-catalog'];
+  const labels = ['account-xp', 'wallet', 'playerloadout', 'weapons-catalog', 'owned-weapon-skins'];
   const errors = [];
 
   settled.forEach((entry, index) => {
@@ -252,6 +317,7 @@ export const fetchAccountProfile = async (shard, puuid, authDetails) => {
   const walletResult = valueOf(1);
   const loadoutResult = valueOf(2);
   const weapons = valueOf(3) || [];
+  const ownedWeaponsResult = valueOf(4);
 
   if (!xpResult && !walletResult && !loadoutResult) {
     const err = new Error('All Riot profile endpoints failed.');
@@ -301,6 +367,7 @@ export const fetchAccountProfile = async (shard, puuid, authDetails) => {
       playerTitle
     },
     guns,
-    sprays
+    sprays,
+    ownedWeapons: ownedWeaponsResult?.ownedWeapons || []
   };
 };

@@ -5,6 +5,7 @@ import { protect } from '../middleware/authMiddleware.js';
 import {
   renderShopImage,
   buildItemsFromStorefront,
+  buildItemsFromOwnedWeapons,
   getAvailableVariants,
   getBundleTitle,
   getImageCacheStats,
@@ -124,6 +125,37 @@ router.post('/image', renderLimiter, jsonBody, async (req, res) => {
     }
     console.error('[ShareRoute] Render failed:', error.message);
     return res.status(500).json({ message: 'Không tạo được ảnh shop.' });
+  }
+});
+
+router.post('/owned-weapons/image', renderLimiter, jsonBody, async (req, res) => {
+  try {
+    const items = buildItemsFromOwnedWeapons(
+      Array.isArray(req.body?.ownedWeapons) ? req.body.ownedWeapons.slice(0, 500) : [],
+      { premiumOnly: req.body?.premiumOnly === true }
+    ).filter((item) => item.name && isAllowedImageUrl(item.imageUrl));
+
+    if (!items.length) return res.status(400).json({ message: 'Không có skin kho vũ khí để tạo ảnh.' });
+
+    const result = await renderShopImage({
+      items,
+      variant: 'owned-weapons',
+      title: req.body?.premiumOnly === true ? 'VP+ WEAPON INVENTORY' : 'WEAPON INVENTORY',
+      lang: normalizeLang(req.body?.lang),
+      size: 'inventory',
+      maxItems: 500,
+      shard: cleanString(req.body?.shard, 8),
+      riotId: cleanString(req.body?.riotId, 40),
+      showRiotId: true,
+      date: new Date()
+    });
+
+    trackShare('imagesRendered', { variant: 'owned-weapons' });
+    return sendImage(res, result);
+  } catch (error) {
+    if (error.message === 'NO_ITEMS_TO_RENDER') return res.status(400).json({ message: 'Không có skin kho vũ khí để tạo ảnh.' });
+    console.error('[ShareRoute] Owned weapon render failed:', error.message);
+    return res.status(500).json({ message: 'Không tạo được ảnh kho vũ khí.' });
   }
 });
 
