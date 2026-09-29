@@ -27,11 +27,11 @@ const VALID_VARIANTS = new Set(['daily', 'night-market', 'bundle', 'accessory'])
 const VALID_SIZES = new Set(['feed', 'og']);
 
 const renderLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 40,
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Bạn tạo ảnh quá nhanh, thử lại sau ít phút.' }
+  message: { message: 'Bạn sử dụng quá nhanh, vui lòng thử lại sau' }
 });
 
 const snapshotLimiter = rateLimit({
