@@ -4,6 +4,14 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { isMailConfigured, sendOtpEmail } from '../services/mailService.js';
+import {
+  loginLimiter,
+  registrationLimiter,
+  passwordResetOtpLimiter,
+  passwordResetOtpIdentifierLimiter,
+  passwordResetLimiter,
+  passwordResetIdentifierLimiter
+} from '../middleware/requestLimiters.js';
 
 const router = express.Router();
 
@@ -51,7 +59,7 @@ router.get('/setup-check', async (req, res) => {
 });
 
 // Register new user (public registration)
-router.post('/register', async (req, res) => {
+router.post('/register', registrationLimiter, async (req, res) => {
   const { fullName, username, email, password, language = 'en' } = req.body;
 
   try {
@@ -153,7 +161,7 @@ router.post('/setup', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
   try {
@@ -181,7 +189,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetOtpLimiter, passwordResetOtpIdentifierLimiter, async (req, res) => {
   const { identifier } = req.body || {};
 
   try {
@@ -226,7 +234,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', passwordResetLimiter, passwordResetIdentifierLimiter, async (req, res) => {
   const { identifier, otp, newPassword } = req.body || {};
 
   try {

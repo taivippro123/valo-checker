@@ -3,6 +3,7 @@ import Log from '../models/Log.js';
 import { getEntitlements, getClientVersion, getRiotGeo, resolveShardFromRiotGeo, getUserInfo } from '../services/riotAuthService.js';
 import { fetchAccountStore, fetchRawStorefront, buildFeaturedBundles } from '../services/storeService.js';
 import { fetchAccountProfile } from '../services/profileService.js';
+import { storeCheckLimiter } from '../middleware/requestLimiters.js';
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ const parseRiotAuthResponse = (rawUrl, providedAccessToken, providedIdToken, pro
   };
 };
 
-router.post('/test/featured-bundle', async (req, res) => {
+router.post('/test/featured-bundle', storeCheckLimiter, async (req, res) => {
   try {
     const { redirectUrl, accessToken: providedAccessToken, idToken: providedIdToken, expiresIn: providedExpiresIn } = req.body || {};
     const { accessToken, idToken, expiresIn } = parseRiotAuthResponse(redirectUrl, providedAccessToken, providedIdToken, providedExpiresIn);
@@ -92,7 +93,7 @@ router.post('/test/featured-bundle', async (req, res) => {
   }
 });
 
-router.post('/test', async (req, res) => {
+router.post('/test', storeCheckLimiter, async (req, res) => {
   try {
     const { redirectUrl, accessToken: providedAccessToken, idToken: providedIdToken, expiresIn: providedExpiresIn } = req.body || {};
     const { accessToken, idToken, expiresIn } = parseRiotAuthResponse(redirectUrl, providedAccessToken, providedIdToken, providedExpiresIn);
@@ -137,7 +138,7 @@ router.post('/test', async (req, res) => {
   }
 });
 
-router.post('/check', async (req, res) => {
+router.post('/check', storeCheckLimiter, async (req, res) => {
   try {
     const { redirectUrl, accessToken: providedAccessToken, idToken: providedIdToken, expiresIn: providedExpiresIn } = req.body || {};
     const { accessToken, idToken, expiresIn } = parseRiotAuthResponse(redirectUrl, providedAccessToken, providedIdToken, providedExpiresIn);
