@@ -261,6 +261,16 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
     return map;
   }, [skins]);
 
+  const getTierAccent = (skin) => {
+    const tierName = skin?.contentTier?.displayName?.toLowerCase() || '';
+    if (tierName.includes('exclusive')) return '#F09B0D';
+    if (tierName.includes('ultra')) return '#FFD663';
+    if (tierName.includes('premium')) return '#D1548D';
+    if (tierName.includes('deluxe')) return '#009984';
+    if (tierName.includes('select')) return '#5A9FE2';
+    return 'rgba(255, 255, 255, 0.12)';
+  };
+
   useEffect(() => {
     fetchAccounts();
     // Pre-load skins on mount to avoid delay when switching to wishlist
@@ -564,11 +574,14 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                     const displayIcon = matchedSkin?.displayIcon || item.displayIcon;
 
                     return (
-                      <div key={item.skinUuid} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
-                        <div className="h-12 w-12 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center p-1">
+                      <div key={item.skinUuid} className="flex items-center gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
+                        <div
+                          className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center border p-1"
+                          style={{ borderColor: getTierAccent(matchedSkin) }}
+                        >
                             {displayIcon ? (
                             <img
-                              src={displayIcon}
+                              src={matchedSkin?.fullRender || displayIcon}
                               alt={item.skinName}
                               className="h-full w-full object-contain"
                             />
@@ -578,13 +591,24 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold text-white break-words">{item.skinName}</div>
-                          <div className="text-[11px] text-valorant-gray break-all">{item.skinUuid}</div>
+                          {matchedSkin?.contentTier?.displayName ? (
+                            <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-valorant-gold">
+                              {matchedSkin.contentTier.displayIcon ? (
+                                <img
+                                  src={matchedSkin.contentTier.displayIcon}
+                                  alt=""
+                                  className="h-4 w-4 object-contain"
+                                />
+                              ) : null}
+                              {matchedSkin.contentTier.displayName}
+                            </div>
+                          ) : null}
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveFromWishlist(item.skinUuid)}
                           disabled={wishlistRemoving === item.skinUuid}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-end sm:self-auto"
+                          className="shrink-0 p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {wishlistRemoving === item.skinUuid ? (
                             <RefreshCw className="w-4 h-4 text-valorant-red animate-spin" />
@@ -630,16 +654,24 @@ const UserLogs = ({ API_URL, username, fullName, onLogout }) => {
                               setSelectedSkinUuids([...selectedSkinUuids, skinUuid]);
                             }
                           }}
-                          className={`flex flex-col sm:flex-row sm:items-center gap-3 text-left rounded-xl border p-3 transition-colors ${isSelected ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 bg-black/10 hover:border-white/10 hover:bg-white/5'}`}
+                          className={`flex items-center gap-3 text-left rounded-xl border p-3 transition-colors ${isSelected ? 'border-valorant-red bg-valorant-red/10' : 'border-white/5 bg-black/10 hover:border-white/10 hover:bg-white/5'}`}
                         >
-                          <div className="h-14 w-14 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center">
-                            {skin.displayIcon ? <img src={skin.displayIcon} alt={skin.displayName} className="h-full w-full object-contain" /> : <span className="text-[10px] text-valorant-gray">N/A</span>}
+                          <div
+                            className="h-20 w-28 sm:h-24 sm:w-36 shrink-0 rounded-lg bg-black/20 overflow-hidden flex items-center justify-center border p-1"
+                            style={{ borderColor: getTierAccent(skin) }}
+                          >
+                            {skin.fullRender || skin.displayIcon ? <img src={skin.fullRender || skin.displayIcon} alt={skin.displayName} className="h-full w-full object-contain" /> : <span className="text-[10px] text-valorant-gray">N/A</span>}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-semibold text-white break-words">{skin.displayName}</div>
-                            <div className="text-[11px] text-valorant-gray break-all">{skinUuid}</div>
+                            {skin.contentTier?.displayName ? (
+                              <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-valorant-gold">
+                                {skin.contentTier.displayIcon ? <img src={skin.contentTier.displayIcon} alt="" className="h-4 w-4 object-contain" /> : null}
+                                {skin.contentTier.displayName}
+                              </div>
+                            ) : null}
                           </div>
-                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 self-end sm:self-auto ${isSelected ? 'border-valorant-red bg-valorant-red text-white' : 'border-white/20 text-transparent'}`}>
+                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'border-valorant-red bg-valorant-red text-white' : 'border-white/20 text-transparent'}`}>
                             <Check className="w-3 h-3" />
                           </div>
                         </button>

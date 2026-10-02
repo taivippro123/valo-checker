@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { LogOut, RefreshCw, Users, Shield, Mail, Calendar, Terminal, Share2 } from 'lucide-react';
+import { LogOut, RefreshCw, Users, Shield, Mail, Calendar, Terminal, Share2, Bell, Gamepad2, X } from 'lucide-react';
 
 const AdminLogs = ({ API_URL, username, onLogout }) => {
   const isSystemAdmin = (username || '').trim().toLowerCase() === 'admin';
@@ -18,6 +18,7 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedUserDetails, setSelectedUserDetails] = useState(null);
   const [selectedUserDetailsLoading, setSelectedUserDetailsLoading] = useState(false);
+  const [userSort, setUserSort] = useState('newest');
 
   const [shareData, setShareData] = useState(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -139,6 +140,22 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
     }
   }, [selectedUserId]);
 
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      if (userSort === 'notifications') {
+        const notificationDiff = Number(b.accounts?.some((account) => account.hasNotifications)) - Number(a.accounts?.some((account) => account.hasNotifications));
+        if (notificationDiff !== 0) return notificationDiff;
+      }
+
+      if (userSort === 'accounts') {
+        const accountDiff = Number(b.accountCount > 0) - Number(a.accountCount > 0);
+        if (accountDiff !== 0) return accountDiff;
+      }
+
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }, [users, userSort]);
+
   const renderLogsTab = () => (
     <>
       {logsError ? <div className="text-valorant-red text-sm">{logsError}</div> : null}
@@ -192,13 +209,31 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: 'newest', label: 'Mới đăng ký', icon: Calendar },
+          { value: 'notifications', label: 'Có notification', icon: Bell },
+          { value: 'accounts', label: 'Có account game', icon: Gamepad2 }
+        ].map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setUserSort(value)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${userSort === value ? 'border-valorant-red bg-valorant-red/10 text-white' : 'border-white/10 text-valorant-gray hover:border-white/20 hover:text-white'}`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
       {usersLoading ? (
         <div className="text-center py-8 text-valorant-gray">Loading...</div>
       ) : users.length === 0 ? (
         <div className="text-center py-8 text-valorant-gray">No users found</div>
       ) : (
         <div className="space-y-2">
-          {users.map((user) => (
+          {sortedUsers.map((user) => (
             <div
               key={user.id}
               className={`glass-panel rounded-lg p-4 border cursor-pointer transition-all ${
@@ -271,8 +306,19 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
       )}
 
       {selectedUserId && (
-        <div className="glass-panel rounded-xl border border-white/5 p-4 mt-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold mb-4">User Details</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" onClick={() => setSelectedUserId(null)}>
+          <div className="glass-panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 p-4 shadow-2xl sm:p-6" onClick={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-valorant-gold">User Details</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedUserId(null)}
+                className="rounded-lg p-2 text-valorant-gray transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Close user details"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           
           {selectedUserDetailsLoading ? (
             <div className="text-center py-4 text-valorant-gray">Loading...</div>
@@ -332,6 +378,7 @@ const AdminLogs = ({ API_URL, username, onLogout }) => {
               </div>
             </div>
           ) : null}
+          </div>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import express from 'express';
 import axios from 'axios';
+import { resolveContentTier } from '../services/storeService.js';
 
 const router = express.Router();
 
@@ -21,6 +22,14 @@ router.get('/', async (req, res) => {
         return skin.displayIcon && !isStandard;
       });
 
+      const contentTierUuids = [...new Set(
+        filteredSkins.map(skin => skin.contentTierUuid).filter(Boolean)
+      )];
+      const contentTiers = new Map(
+        (await Promise.all(contentTierUuids.map(async uuid => [uuid, await resolveContentTier(uuid)])))
+          .filter(([, tier]) => tier)
+      );
+
       const mappedSkins = filteredSkins.map(skin => {
         // In storefront offers, Riot sells the first level of the skin level, not the base skin UUID itself.
         // We resolve and store the levelUuid (usually levels[0].uuid) for precise matchmaking.
@@ -33,6 +42,8 @@ router.get('/', async (req, res) => {
           levelUuid: levelUuid,
           displayName: skin.displayName,
           displayIcon: skin.displayIcon,
+          fullRender: skin.levels?.[0]?.displayIcon || skin.displayIcon,
+          contentTier: contentTiers.get(skin.contentTierUuid) || null,
           chromas: skin.chromas || []
         };
       });
